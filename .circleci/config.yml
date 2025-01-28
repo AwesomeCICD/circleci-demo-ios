@@ -13,7 +13,9 @@ jobs:
       - run: bundle install
       - run:
           name: Fastlane
-          command: bundle exec fastlane $FASTLANE_LANE
+          command: |
+            fastlane snapshot update
+            bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output
       - store_test_results:
@@ -32,7 +34,9 @@ jobs:
       - run: bundle install
       - run:
           name: Fastlane
-          command: bundle exec fastlane $FASTLANE_LANE
+          command: |
+            fastlane snapshot update
+            bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output/Game.ipa
 
@@ -49,7 +53,9 @@ jobs:
       - run: bundle install
       - run:
           name: Fastlane
-          command: bundle exec fastlane $FASTLANE_LANE
+          command: |
+            fastlane snapshot update
+            bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output/Game.ipa
 
