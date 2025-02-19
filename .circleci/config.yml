@@ -1,4 +1,5 @@
-version: 2
+version: 2.1
+
 jobs:
   build-and-test:
     macos:
@@ -60,7 +61,6 @@ jobs:
           path: output/Game.ipa
 
 workflows:
-  version: 2
   build-test-adhoc:
     jobs:
       - build-and-test
@@ -70,9 +70,9 @@ workflows:
               only: development
           requires:
             - build-and-test
-      #- beta:
-      #filters:
-      #branches:
-      #only: master
-      #requires:
-      #- build-and-test
+      - beta:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build-and-test
