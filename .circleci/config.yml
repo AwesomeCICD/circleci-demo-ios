@@ -15,6 +15,7 @@ jobs:
       - run:
           name: Fastlane
           command: |
+            echo $CIRCLE_SHA1
             fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
