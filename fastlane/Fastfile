@@ -7,8 +7,12 @@ platform :ios do
 
   desc "Runs all the tests"
   lane :test do
-    scan
-    snapshot
+    scan(
+      scheme: "Game",
+      devices: ["iPhone 16"],
+      output_directory: "output/scan",
+      code_coverage: true
+    )
   end
 
   desc "Ad-hoc build"
@@ -20,16 +24,52 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   desc "This will also make sure the profile is up to date"
   lane :beta do
-    match(type: "appstore")
-    gym(export_method: "app-store")
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1
+    )
+    # Import the certificates we downloaded from S3
+    import_certificate(
+      certificate_path: "certificates/login.keychain-db",
+      keychain_name: "login.keychain",
+      keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
+    )
+    # Use the provisioning profiles we downloaded from S3
+    update_project_provisioning(
+      xcodeproj: "Game.xcodeproj",  # Replace with your project name
+      profile: "certificates/*.mobileprovision",  # Wildcard to find all profiles
+      build_configuration: "Release"
+    )
+    # Build the app
+    gym(
+      scheme: "Game",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.circleci.ios-game" => "match AppStore com.circleci.ios-game"
+        }
+      },
+      output_directory: "output"
+    )
+    # Upload to TestFlight
+    pilot(
+      skip_waiting_for_build_processing: true
+    )
+    # Note: S3 upload is handled by CircleCI AWS S3 orb in config.yml
+    # This keeps the Fastfile focused on app-specific tasks
+    # and leaves infrastructure operations to CircleCI
+    # Tag the release in git
+    add_git_tag(
+      tag: "v#{get_version_number}-#{get_build_number}"
+    )
   end
-
-  desc "Deploy a new version to the App Store"
-  lane :release do
-    # match(type: "appstore")
-    # snapshot
-    gym # Build your app - more options available
-    deliver(force: true)
-    # frameit
+  
+  desc "Setup certificates for local development"
+  lane :setup_certs do
+    # This lane would be used locally, not in CI
+    # It might download the certificates from S3 or use a different approach
+    # depending on your team's workflow
+    UI.important("This is a placeholder lane for certificate setup.")
+    UI.message("For CI, certificates are managed via the CircleCI S3 download process.")
+    UI.message("For local development, you may want to implement a custom certificate handling process here.")
   end
 end

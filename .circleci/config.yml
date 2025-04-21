@@ -1,10 +1,15 @@
 version: 2.1
 
+orbs:
+  aws-s3: circleci/aws-s3@4.1.1
+  aws-cli: circleci/aws-cli@5.2.0
+ 
 jobs:
   build-and-test:
     macos:
       xcode: "16.2.0"
     working_directory: /Users/distiller/project
+    # default fastlane environment locations
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
@@ -15,28 +20,63 @@ jobs:
       - run:
           name: Fastlane
           command: |
-            fastlane snapshot update
+            echo $CIRCLE_SHA1
+            bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output
       - store_test_results:
           path: output/scan
+      - aws-cli/setup:
+          use_brew: true
+          role_arn: ${AWS_ROLE_ARN}
+          region: ${AWS_REGION}
+      - run:
+          name: Zip build artifact for upload
+          # avgtool is Apple's build number management tool
+          # what-marketing-version is a command that retrieves build version like "2.10.2" from Info.plist
+          # terse1 retrieves only the build number, terse includes additional text
+          command: |
+            APP_VERSION=$(agvtool what-marketing-version -terse1)
+            BUILD_NUMBER=$(agvtool what-version -terse)
+            ZIP_NAME="app-${APP_VERSION}-${BUILD_NUMBER}.zip"
+            zip -r $ZIP_NAME ./build
+            echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
+            echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
+            echo "export BUILD_NUMBER=${BUILD_NUMBER}" >> $BASH_ENV
+      - run:
+          name: Debug directory structure
+          command: |
+            ls -la
+            ls -la output || echo "No output directory"
+      - aws-s3/copy:
+          from: ${ZIP_NAME}
+          to: s3://${S3_BUCKET_NAME}/builds/
+          arguments: |
+            --metadata "appVersion="${APP_VERSION},buildNumber=${BUILD_NUMBER}"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - output
 
   adhoc:
     macos:
       xcode: "16.2.0"
     working_directory: /Users/distiller/project
+    # default fastlane environment locations
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - attach_workspace:
+          at: .
       - run: bundle install
       - run:
           name: Fastlane
           command: |
-            fastlane snapshot update
+            bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output/Game.ipa
@@ -45,20 +85,52 @@ jobs:
     macos:
       xcode: "16.2.0"
     working_directory: /Users/distiller/project
+    # default fastlane environment locations
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - attach_workspace:
+          at: .
       - run: bundle install
+      - aws-cli/setup:
+          use_brew: true
+          role_arn: ${AWS_ROLE_ARN}
+          region: ${AWS_REGION}
+      - aws-s3/copy:
+          from: s3://${S3_BUCKET_NAME}/certificates/certificates.tar.gz
+          to: ./certificates.tar.gz
       - run:
-          name: Fastlane
+          name: Extract signing certificates and provisioning profiles
+          command: tar -xzf certificates.tar.gz
+      - run:
+          name: Fastlane Testflight
           command: |
-            fastlane snapshot update
+            bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output/Game.ipa
+      - run:
+          name: Create build info JSON
+          command: |
+            APP_VERSION=$(agvtool what-marketing-version -terse1)
+            BUILD_NUMBER=$(agvtool what-version -terse)
+            echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${BUILD_NUMBER}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
+      - aws-s3/copy:
+          from: build_info.json
+          to: s3://${S3_BUCKET_NAME}/releases/build_info.json
+          arguments: |
+            --metadata "appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER},environment=testflight"
+      - run:
+          name: Update Amplify app
+          command: |
+            aws amplify update-app \
+              --app-id $AMPLIFY_APP_ID \
+              --platform IOS \
+              --version ${APP_VERSION} \
+              --release-notes "Build ${BUILD_NUMBER} deployed to TestFlight"
 
 workflows:
   build-test-adhoc:
@@ -67,12 +139,17 @@ workflows:
       - adhoc:
           filters:
             branches:
-              only: development
+              only: /dev-.*/
           requires:
             - build-and-test
       - beta:
           filters:
             branches:
-              only: master
+              only: main
           requires:
             - build-and-test
+
+postgres:
+  resource_limits:
+    cpu: "1"
+    memory: 2048M
