@@ -1,44 +1,49 @@
 #!/bin/bash
 set -e
 
-# This script packages certificates and provisioning profiles for S3
-# It should be run locally, not in CI
-
-# Ensure AWS CLI is configured
-if ! command -v aws &> /dev/null; then
-    echo "AWS CLI is not installed. Please install it first."
+# Check if AWS SSO session is active
+if ! aws sts get-caller-identity &>/dev/null; then
+  echo "No active AWS session detected. Initiating AWS SSO login..."
+  
+  # Check if a profile was specified
+  if [ -z "$AWS_PROFILE" ]; then
+    echo "No AWS_PROFILE specified. Please export AWS_PROFILE or add --profile to your command."
     exit 1
+  fi
+  
+  # Login using SSO
+  aws sso login --profile "$AWS_PROFILE"
+  
+  # Verify login was successful
+  if ! aws sts get-caller-identity --profile "$AWS_PROFILE" &>/dev/null; then
+    echo "AWS SSO login failed. Please check your configuration and try again."
+    exit 1
+  fi
 fi
 
-# Verify AWS credentials
-if ! aws sts get-caller-identity &> /dev/null; then
-    echo "AWS credentials not configured. Please run 'aws configure' first."
-    exit 1
+# Ensure the S3_BUCKET_NAME is set
+if [ -z "$S3_BUCKET_NAME" ]; then
+  echo "Error: S3_BUCKET_NAME environment variable is not set"
+  exit 1
 fi
 
-# Create a temporary directory
-TEMP_DIR=$(mktemp -d)
-CERTS_DIR="$TEMP_DIR/certificates"
-mkdir -p "$CERTS_DIR"
+# Create tarball
+echo "Creating certificates tarball..."
+tar -czf certificates.tar.gz -C certificates cert.p12
 
-# Copy certificates and provisioning profiles to the temporary directory
-echo "Copying certificates and provisioning profiles..."
-cp -R ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision "$CERTS_DIR/"
-cp -R ~/Library/Keychains/login.keychain-db "$CERTS_DIR/"
-
-# Create the tarball
-echo "Creating tarball..."
-tar -czf certificates.tar.gz -C "$TEMP_DIR" certificates
-
-# Upload to S3 with metadata
+# Upload to S3 (using profile if specified)
 echo "Uploading to S3..."
-TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-aws s3 cp certificates.tar.gz s3://${S3_BUCKET_NAME}/certificates/ \
-  --metadata "createdAt=${TIMESTAMP},creator=$(whoami),environment=local"
+if [ -n "$AWS_PROFILE" ]; then
+  aws s3 cp certificates.tar.gz "s3://${S3_BUCKET_NAME}/certificates/" \
+    --profile "$AWS_PROFILE" \
+    --metadata "createdAt=$(date +"%Y-%m-%d_%H-%M-%S"),creator=$(whoami),environment=production"
+else
+  aws s3 cp certificates.tar.gz "s3://${S3_BUCKET_NAME}/certificates/" \
+    --metadata "createdAt=$(date +"%Y-%m-%d_%H-%M-%S"),creator=$(whoami),environment=production"
+fi
 
-# Clean up
+# Cleanup
 echo "Cleaning up..."
-rm -rf "$TEMP_DIR"
 rm certificates.tar.gz
 
-echo "Done! Certificates and provisioning profiles uploaded to S3."
+echo "Done! Certificates package uploaded to s3://${S3_BUCKET_NAME}/certificates/"
