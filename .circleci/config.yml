@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   aws-s3: circleci/aws-s3@4.1.1
   aws-cli: circleci/aws-cli@5.2.0
- 
+
 jobs:
   build-and-test:
     macos:
@@ -13,6 +13,7 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
+      FASTLANE_USER: ${FASTLANE_USERNAME}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
@@ -67,6 +68,7 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
+      FASTLANE_USER: ${FASTLANE_USERNAME}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
@@ -89,6 +91,7 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
+      FASTLANE_USER: ${FASTLANE_USERNAME}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
