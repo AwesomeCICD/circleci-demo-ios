@@ -13,11 +13,17 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
-      FASTLANE_USER: $FASTLANE_USERNAME
-      FASTLANE_PASSWORD: $FASTLANE_PASSWORD
+      # FASTLANE_USER: $FASTLANE_USERNAME
+      # FASTLANE_PASSWORD: $FASTLANE_PASSWORD
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - run:
+          name: Export variables
+          command: |
+            echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
+            echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
+            source $BASH_ENV
       - run: bundle install
       - run:
           name: Fastlane
@@ -69,11 +75,17 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
-      FASTLANE_USER: ${FASTLANE_USERNAME}
-      FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
+      # FASTLANE_USER: ${FASTLANE_USERNAME}
+      # FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - run:
+          name: Export variables
+          command: |
+            echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
+            echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
+            source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install
@@ -93,11 +105,17 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
-      FASTLANE_USER: $FASTLANE_USERNAME
-      FASTLANE_PASSWORD: $FASTLANE_PASSWORD
+      # FASTLANE_USER: $FASTLANE_USERNAME
+      # FASTLANE_PASSWORD: $FASTLANE_PASSWORD
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - run:
+          name: Export variables
+          command: |
+            echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
+            echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
+            source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install
