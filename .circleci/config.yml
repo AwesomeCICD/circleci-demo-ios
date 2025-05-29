@@ -13,8 +13,8 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
-      FASTLANE_USER: ${FASTLANE_USERNAME}
-      FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
+      FASTLANE_USER: $FASTLANE_USERNAME
+      FASTLANE_PASSWORD: $FASTLANE_PASSWORD
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
