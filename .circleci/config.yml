@@ -14,6 +14,7 @@ jobs:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
       FASTLANE_USER: ${FASTLANE_USERNAME}
+      FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
@@ -69,6 +70,7 @@ jobs:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
       FASTLANE_USER: ${FASTLANE_USERNAME}
+      FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
@@ -91,7 +93,8 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
-      FASTLANE_USER: ${FASTLANE_USERNAME}
+      FASTLANE_USER: $FASTLANE_USERNAME
+      FASTLANE_PASSWORD: $FASTLANE_PASSWORD
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout

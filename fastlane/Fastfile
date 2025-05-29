@@ -25,6 +25,7 @@ platform :ios do
   desc "This will also make sure the profile is up to date"
   lane :beta do
     username = ENV['FASTLANE_USER']
+    password = ENV['FASTLANE_PASSWORD']
     increment_build_number(
       build_number: latest_testflight_build_number + 1,
       username: username
