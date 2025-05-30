@@ -113,7 +113,7 @@ jobs:
       - run:
           name: Export variables
           command: |
-            export FASTLANE_USER=$FASTLANE_USERNAME >> $BASH_ENV
+            export FASTLANE_USERNAME=$FASTLANE_USERNAME >> $BASH_ENV
             export FASTLANE_PASSWORD=$FASTLANE_PASSWORD >> $BASH_ENV
             source $BASH_ENV
             echo FASTLANE_USER
