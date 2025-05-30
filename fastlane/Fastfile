@@ -24,11 +24,11 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   desc "This will also make sure the profile is up to date"
   lane :beta do
-    username = ENV['FASTLANE_USERNAME']
+    username = ENV['FASTLANE_USER']
     password = ENV['FASTLANE_PASSWORD']
     increment_build_number(
-      build_number: latest_testflight_build_number + 1,
-      username: username
+      build_number: latest_testflight_build_number + 1
+      # username: username
     )
     # Import the certificates we downloaded from S3
     import_certificate(
