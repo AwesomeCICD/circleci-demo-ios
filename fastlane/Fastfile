@@ -24,6 +24,17 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   desc "This will also make sure the profile is up to date"
   lane :beta do
+    # testing variables
+    UI.message("Using username: #{ENV['FASTLANE_USER']}")
+    UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+
+    if ENV['FASTLANE_PASSWORD'].nil? || ENV['FASTLANE_PASSWORD'].empty?
+        UI.error("FASTLANE_PASSWORD is not set")
+        next
+    else
+        UI.message("Password is this long: (#{ENV['FASTLANE_PASSWORD'].length})")
+    end
+
     # Get the latest TestFlight build number with authentication
     latest_build = latest_testflight_build_number(
       username: ENV['FASTLANE_USER'],
