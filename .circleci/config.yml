@@ -46,8 +46,11 @@ jobs:
           # terse1 retrieves only the build number, terse includes additional text
           command: |
             APP_VERSION=$(agvtool what-marketing-version -terse1)
+            echo $APP_VERSION
             BUILD_NUMBER=$(agvtool what-version -terse)
+            echo $BUILD_NUMBER
             ZIP_NAME="app-${APP_VERSION}-${BUILD_NUMBER}.zip"
+            echo $ZIP_NAME
             zip -r $ZIP_NAME ./build
             echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
