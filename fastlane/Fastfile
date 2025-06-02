@@ -24,8 +24,9 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   desc "This will also make sure the profile is up to date"
   lane :beta do
-    username = ENV['FASTLANE_USER']
-    password = ENV['FASTLANE_PASSWORD']
+      username: ENV['FASTLANE_USER'],
+      team_id: ENV['APPLE_TEAM_ID'],
+      app_identifier: "com.circleci.ios-game"
     increment_build_number(
       build_number: latest_testflight_build_number + 1
       # username: username
@@ -53,8 +54,11 @@ platform :ios do
       },
       output_directory: "output"
     )
-    # Upload to TestFlight
+    # Upload to TestFlight with authentication
     pilot(
+      username: ENV['FASTLANE_USER'],
+      team_id: ENV['APPLE_TEAM_ID'],
+      app_identifier: "com.circleci.ios-game",
       skip_waiting_for_build_processing: true
     )
     # Note: S3 upload is handled by CircleCI AWS S3 orb in config.yml
