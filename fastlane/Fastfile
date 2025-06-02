@@ -1,4 +1,4 @@
-default_platform :ios
+default_platform(:ios)
 
 platform :ios do
   before_all do
@@ -24,25 +24,32 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   desc "This will also make sure the profile is up to date"
   lane :beta do
-    username: ENV['FASTLANE_USER'],
-    team_id: ENV['APPLE_TEAM_ID'],
-    app_identifier: "com.circleci.ios-game",
-    increment_build_number(
-      build_number: latest_testflight_build_number + 1
-      # username: username
+    # Get the latest TestFlight build number with authentication
+    latest_build = latest_testflight_build_number(
+      username: ENV['FASTLANE_USER'],
+      team_id: ENV['APPLE_TEAM_ID'],
+      app_identifier: "com.circleci.ios-game"
     )
+    
+    # Increment build number locally
+    increment_build_number(
+      build_number: latest_build + 1
+    )
+    
     # Import the certificates we downloaded from S3
     import_certificate(
       certificate_path: "certificates/login.keychain-db",
       keychain_name: "login.keychain",
       keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
     )
+    
     # Use the provisioning profiles we downloaded from S3
     update_project_provisioning(
-      xcodeproj: "Game.xcodeproj",  # Replace with your project name
-      profile: "certificates/*.mobileprovision",  # Wildcard to find all profiles
+      xcodeproj: "Game.xcodeproj",
+      profile: "certificates/*.mobileprovision",
       build_configuration: "Release"
     )
+    
     # Build the app
     gym(
       scheme: "Game",
@@ -54,6 +61,7 @@ platform :ios do
       },
       output_directory: "output"
     )
+    
     # Upload to TestFlight with authentication
     pilot(
       username: ENV['FASTLANE_USER'],
@@ -61,9 +69,7 @@ platform :ios do
       app_identifier: "com.circleci.ios-game",
       skip_waiting_for_build_processing: true
     )
-    # Note: S3 upload is handled by CircleCI AWS S3 orb in config.yml
-    # This keeps the Fastfile focused on app-specific tasks
-    # and leaves infrastructure operations to CircleCI
+    
     # Tag the release in git
     add_git_tag(
       tag: "v#{get_version_number}-#{get_build_number}"
@@ -72,9 +78,6 @@ platform :ios do
   
   desc "Setup certificates for local development"
   lane :setup_certs do
-    # This lane would be used locally, not in CI
-    # It might download the certificates from S3 or use a different approach
-    # depending on your team's workflow
     UI.important("This is a placeholder lane for certificate setup.")
     UI.message("For CI, certificates are managed via the CircleCI S3 download process.")
     UI.message("For local development, you may want to implement a custom certificate handling process here.")
