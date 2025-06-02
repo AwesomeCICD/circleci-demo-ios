@@ -17,37 +17,69 @@ platform :ios do
 
   desc "Ad-hoc build"
   lane :adhoc do
-    match(type: "adhoc")
-    gym(export_method: "ad-hoc")
+    # Import certificates from S3
+    import_certificate(
+      certificate_path: "certificates/login.keychain-db",
+      keychain_name: "login.keychain",
+      keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
+    )
+    
+    # Update provisioning profiles
+    update_project_provisioning(
+      xcodeproj: "Game.xcodeproj",
+      profile: "certificates/*.mobileprovision",
+      build_configuration: "Release"
+    )
+    
+    # Build for ad-hoc distribution
+    gym(
+      scheme: "Game",
+      export_method: "ad-hoc",
+      output_directory: "output",
+      output_name: "Game.ipa"
+    )
   end
 
   desc "Submit a new Beta Build to Apple TestFlight"
-  desc "This will also make sure the profile is up to date"
   lane :beta do
-    # testing variables
-    UI.message("Using username: #{ENV['FASTLANE_USER']}")
+    UI.message("🚀 Starting TestFlight build process...")
+    
+    # Debug credentials (without exposing password)
+    UI.message("Using Apple ID: #{ENV['FASTLANE_USER']}")
     UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
-
+    UI.message("App Identifier: com.circleci.ios-game")
+    
     if ENV['FASTLANE_PASSWORD'].nil? || ENV['FASTLANE_PASSWORD'].empty?
-        UI.error("FASTLANE_PASSWORD is not set")
-        next
+      UI.error("❌ FASTLANE_PASSWORD is not set!")
+      raise "FASTLANE_PASSWORD environment variable is required"
     else
-        UI.message("Password is this long: (#{ENV['FASTLANE_PASSWORD'].length})")
+      UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
     end
-
-    ENV['FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD'] = ENV['FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD']
-
+    
+    UI.message("📱 Fetching latest TestFlight build number...")
+    
     # Get the latest TestFlight build number with authentication
-    latest_build = latest_testflight_build_number(
-      username: ENV['FASTLANE_USER'],
-      team_id: ENV['APPLE_TEAM_ID'],
-      app_identifier: "com.circleci.ios-game"
+    begin
+      latest_build = latest_testflight_build_number(
+        username: ENV['FASTLANE_USER'],
+        team_id: ENV['APPLE_TEAM_ID'],
+        app_identifier: "com.circleci.ios-game"
+      )
+      UI.message("Latest build number: #{latest_build}")
+    rescue => ex
+      UI.message("No previous builds found or error fetching: #{ex}")
+      latest_build = 0
+    end
+    
+    # Increment build number
+    new_build_number = latest_build + 1
+    UI.message("Setting new build number to: #{new_build_number}")
+    
+    increment_build_number(
+      build_number: new_build_number
     )
     
-    # Increment build number locally
-    increment_build_number(
-      build_number: latest_build + 1
-    )
+    UI.message("🔐 Setting up certificates and provisioning profiles...")
     
     # Import the certificates we downloaded from S3
     import_certificate(
@@ -63,7 +95,9 @@ platform :ios do
       build_configuration: "Release"
     )
     
-    # Build the app
+    UI.message("🔨 Building the app...")
+    
+    # Build the app for App Store distribution
     gym(
       scheme: "Game",
       export_method: "app-store",
@@ -72,27 +106,51 @@ platform :ios do
           "com.circleci.ios-game" => "match AppStore com.circleci.ios-game"
         }
       },
-      output_directory: "output"
+      output_directory: "output",
+      output_name: "Game.ipa"
     )
+    
+    UI.message("📤 Uploading to TestFlight...")
     
     # Upload to TestFlight with authentication
     pilot(
       username: ENV['FASTLANE_USER'],
       team_id: ENV['APPLE_TEAM_ID'],
       app_identifier: "com.circleci.ios-game",
-      skip_waiting_for_build_processing: true
+      skip_waiting_for_build_processing: true,
+      changelog: "Build #{new_build_number} - Automated CI/CD build"
     )
+    
+    UI.message("🏷️ Tagging release...")
     
     # Tag the release in git
     add_git_tag(
-      tag: "v#{get_version_number}-#{get_build_number}"
+      tag: "v#{get_version_number}-#{new_build_number}"
     )
+    
+    UI.success("✅ Beta build complete! Build #{new_build_number} uploaded to TestFlight")
   end
   
-  desc "Setup certificates for local development"
-  lane :setup_certs do
-    UI.important("This is a placeholder lane for certificate setup.")
-    UI.message("For CI, certificates are managed via the CircleCI S3 download process.")
-    UI.message("For local development, you may want to implement a custom certificate handling process here.")
+  desc "Test Apple ID authentication"
+  lane :test_auth do
+    UI.message("Testing Apple ID authentication...")
+    UI.message("Username: #{ENV['FASTLANE_USER']}")
+    UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+    
+    begin
+      latest_build = latest_testflight_build_number(
+        username: ENV['FASTLANE_USER'],
+        team_id: ENV['APPLE_TEAM_ID'],
+        app_identifier: "com.circleci.ios-game"
+      )
+      UI.success("✅ Authentication successful! Latest build number: #{latest_build}")
+    rescue => ex
+      UI.error("❌ Authentication failed: #{ex}")
+      UI.error("Please verify:")
+      UI.error("1. FASTLANE_USER is correct Apple ID")
+      UI.error("2. FASTLANE_PASSWORD is an app-specific password")
+      UI.error("3. Apple ID has access to this app in App Store Connect")
+      UI.error("4. APPLE_TEAM_ID is correct")
+    end
   end
 end
