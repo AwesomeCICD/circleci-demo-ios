@@ -18,12 +18,12 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      - run:
-          name: Export variables
-          command: |
-            echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
-            echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
-            source $BASH_ENV
+      # - run:
+      #     name: Export variables
+      #     command: |
+      #       echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
+      #       echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
+      #       source $BASH_ENV
       - run: bundle install
       - run:
           name: Fastlane
@@ -80,12 +80,12 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      - run:
-          name: Export variables
-          command: |
-            echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
-            echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
-            source $BASH_ENV
+      # - run:
+      #     name: Export variables
+      #     command: |
+      #       echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
+      #       echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
+      #       source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install
@@ -110,12 +110,12 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      - run:
-          name: Export variables
-          command: |
-            export FASTLANE_USER=$FASTLANE_USER >> $BASH_ENV
-            export FASTLANE_PASSWORD=$FASTLANE_PASSWORD >> $BASH_ENV
-            source $BASH_ENV
+      # - run:
+      #     name: Export variables
+      #     command: |
+      #       export FASTLANE_USER=$FASTLANE_USER >> $BASH_ENV
+      #       export FASTLANE_PASSWORD=$FASTLANE_PASSWORD >> $BASH_ENV
+      #       source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install

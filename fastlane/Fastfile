@@ -35,6 +35,8 @@ platform :ios do
         UI.message("Password is this long: (#{ENV['FASTLANE_PASSWORD'].length})")
     end
 
+    ENV['FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD'] = ENV['FASTLANE_APPLE_APPLICATIO_SPECIFIC_PASSWORD']
+
     # Get the latest TestFlight build number with authentication
     latest_build = latest_testflight_build_number(
       username: ENV['FASTLANE_USER'],
