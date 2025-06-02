@@ -61,7 +61,7 @@ jobs:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
           arguments: |
-            --metadata "appVersion="${APP_VERSION},buildNumber=${BUILD_NUMBER}"
+            --metadata appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER}
       - persist_to_workspace:
           root: .
           paths:
@@ -146,7 +146,7 @@ jobs:
           from: build_info.json
           to: s3://${S3_BUCKET_NAME}/releases/build_info.json
           arguments: |
-            --metadata "appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER},environment=testflight"
+            --metadata appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER},environment=testflight
       - run:
           name: Update Amplify app
           command: |
