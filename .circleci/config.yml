@@ -47,14 +47,11 @@ jobs:
           command: |
             APP_VERSION=$(agvtool what-marketing-version -terse1)
             echo $APP_VERSION
-            BUILD_NUMBER=$(agvtool what-version -terse)
-            echo $BUILD_NUMBER
-            ZIP_NAME="app-${APP_VERSION}-${BUILD_NUMBER}.zip"
+            ZIP_NAME="app-${APP_VERSION}.zip"
             echo $ZIP_NAME
-            zip -r $ZIP_NAME ./build
+            zip -r $ZIP_NAME . -i ./build
             echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
-            echo "export BUILD_NUMBER=${BUILD_NUMBER}" >> $BASH_ENV
       - run:
           name: Debug directory structure
           command: |
@@ -64,7 +61,7 @@ jobs:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
           arguments: |
-            --metadata appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER}
+            --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION}
       - persist_to_workspace:
           root: .
           paths:
@@ -143,13 +140,20 @@ jobs:
           name: Create build info JSON
           command: |
             APP_VERSION=$(agvtool what-marketing-version -terse1)
-            BUILD_NUMBER=$(agvtool what-version -terse)
-            echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${BUILD_NUMBER}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
+            echo $APP_VERSION
+            ZIP_NAME="app-${APP_VERSION}.zip"
+            echo $ZIP_NAME
+            zip -r $ZIP_NAME . -i ./build
+            echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
+            echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
+            APP_VERSION=$(agvtool what-marketing-version -terse1)
+            # BUILD_NUMBER=$(agvtool what-version -terse)
+            echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${APP_VERSION}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
       - aws-s3/copy:
           from: build_info.json
           to: s3://${S3_BUCKET_NAME}/releases/build_info.json
           arguments: |
-            --metadata appVersion=${APP_VERSION},buildNumber=${BUILD_NUMBER},environment=testflight
+            --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION},environment=testflight
       - run:
           name: Update Amplify app
           command: |
@@ -157,7 +161,7 @@ jobs:
               --app-id $AMPLIFY_APP_ID \
               --platform IOS \
               --version ${APP_VERSION} \
-              --release-notes "Build ${BUILD_NUMBER} deployed to TestFlight"
+              --release-notes "Build ${APP_VERSION} deployed to TestFlight"
 
 workflows:
   build-test-adhoc:
