@@ -50,6 +50,6 @@ vendor/
 
 # Other
 *.log
-.env
+*.env*
 .vscode/*
 .vscode
