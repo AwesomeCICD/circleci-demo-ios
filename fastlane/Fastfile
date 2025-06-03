@@ -19,8 +19,9 @@ platform :ios do
   lane :adhoc do
     # Import certificates from S3
     import_certificate(
-      certificate_path: "certificates/login.keychain-db",
-      keychain_name: "login.keychain",
+      certificate_path: "certificates/cert.p12",
+      certificate_password: ENV['CERTIFICATE_PASSWORD'],
+      keychain_name: "fastlane_tmp_keychain",
       keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
     )
     
@@ -83,8 +84,9 @@ platform :ios do
     
     # Import the certificates we downloaded from S3
     import_certificate(
-      certificate_path: "certificates/login.keychain-db",
-      keychain_name: "login.keychain",
+      certificate_path: "certificates/distribution.p12",
+      certificate_password: ENV["CERTIFICATE_PASSWORD"],
+      keychain_name: "fastlane_tmp_keychain",
       keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"]
     )
     
