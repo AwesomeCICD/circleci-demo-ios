@@ -13,17 +13,9 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: test
-      # FASTLANE_USER: $FASTLANE_USERNAME
-      # FASTLANE_PASSWORD: $FASTLANE_PASSWORD
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      # - run:
-      #     name: Export variables
-      #     command: |
-      #       echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
-      #       echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
-      #       source $BASH_ENV
       - run: bundle install
       - run:
           name: Fastlane
@@ -75,17 +67,9 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: adhoc
-      # FASTLANE_USER: ${FASTLANE_USERNAME}
-      # FASTLANE_PASSWORD: ${FASTLANE_PASSWORD}
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      # - run:
-      #     name: Export variables
-      #     command: |
-      #       echo "export FASTLANE_USER=$FASTLANE_USERNAME" >> $BASH_ENV
-      #       echo "export FASTLANE_PASSWORD=$FASTLANE_PASSWORD" >> $BASH_ENV
-      #       source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install
@@ -110,12 +94,6 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      # - run:
-      #     name: Export variables
-      #     command: |
-      #       export FASTLANE_USER=$FASTLANE_USER >> $BASH_ENV
-      #       export FASTLANE_PASSWORD=$FASTLANE_PASSWORD >> $BASH_ENV
-      #       source $BASH_ENV
       - attach_workspace:
           at: .
       - run: bundle install
@@ -123,9 +101,9 @@ jobs:
           use_brew: true
           role_arn: ${AWS_ROLE_ARN}
           region: ${AWS_REGION}
-      - aws-s3/copy:
-          from: s3://${S3_BUCKET_NAME}/certificates/certificates.tar.gz
-          to: ./certificates.tar.gz
+      - run:
+          name: Copy signing certificates from S3
+          command: aws s3 cp s3://${S3_BUCKET_NAME}/certificates/certificates.tar.gz .
       - run:
           name: Extract signing certificates and provisioning profiles
           command: tar -xzf certificates.tar.gz
@@ -166,7 +144,10 @@ jobs:
 workflows:
   build-test-adhoc:
     jobs:
-      - build-and-test
+      - build-and-test:
+          filters:
+            branches:
+              only: main
       - adhoc:
           filters:
             branches:
