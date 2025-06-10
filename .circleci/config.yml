@@ -72,19 +72,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:D14H2oA/zMRTh1fp2ZWtY/wlTRaqPSnh/GEmUZ6mM/o"
-      - run:
-          name: Add GitHub to known hosts
-          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Test SSH connection to certificates repository
-          command: |
-            echo "Testing SSH connection to match repository..."
-            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
-            echo "Available SSH keys:"
-            ssh-add -l || echo "No SSH keys found"
       - run: bundle install
       - run:
           name: Fastlane
@@ -107,19 +94,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:D14H2oA/zMRTh1fp2ZWtY/wlTRaqPSnh/GEmUZ6mM/o"
-      - run:
-          name: Add GitHub to known hosts
-          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Test SSH connection to certificates repository
-          command: |
-            echo "Testing SSH connection to match repository..."
-            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
-            echo "Available SSH keys:"
-            ssh-add -l || echo "No SSH keys found"
       - run: bundle install
       - aws-cli/setup:
           use_brew: true

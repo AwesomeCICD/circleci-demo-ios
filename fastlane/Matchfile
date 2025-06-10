@@ -1,4 +1,4 @@
-git_url("git@github.com:AwesomeCICD/circleci-match-credentials.git")
+git_url("https://github.com/AwesomeCICD/circleci-match-credentials")
 
 storage_mode("git")
 
