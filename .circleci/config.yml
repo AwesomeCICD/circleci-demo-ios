@@ -52,11 +52,6 @@ jobs:
       - aws-s3/copy:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
-          auth:
-            - aws-cli/setup:
-                use_brew: true
-                role_arn: ${AWS_ROLE_ARN}
-                region: ${AWS_REGION}
           arguments: |
             --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION}
       - persist_to_workspace:
@@ -127,11 +122,6 @@ jobs:
       - aws-s3/copy:
           from: build_info.json
           to: s3://${S3_BUCKET_NAME}/releases/build_info.json
-          auth:
-            - aws-cli/setup:
-                use_brew: true
-                role_arn: ${AWS_ROLE_ARN}
-                region: ${AWS_REGION}
           arguments: |
             --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION},environment=testflight
       - run:
