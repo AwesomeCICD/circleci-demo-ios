@@ -21,6 +21,7 @@ jobs:
           name: Fastlane
           command: |
             echo $CIRCLE_SHA1
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -72,10 +73,29 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:D14H2oA/zMRTh1fp2ZWtY/wlTRaqPSnh/GEmUZ6mM/o"
+      - run:
+          name: Set Git User
+          command: |
+            git config --global user.email "fieldeng@circleci.com"
+            git config --global user.name "Field Engineering CI User"
+      - run:
+          name: Add GitHub to known hosts
+          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Test SSH connection to certificates repository
+          command: |
+            echo "Testing SSH connection to match repository..."
+            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
+            echo "Available SSH keys:"
+            ssh-add -l || echo "No SSH keys found"
       - run: bundle install
       - run:
           name: Fastlane
           command: |
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -94,6 +114,24 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:D14H2oA/zMRTh1fp2ZWtY/wlTRaqPSnh/GEmUZ6mM/o"
+      - run:
+          name: Set Git User
+          command: |
+            git config --global user.email "fieldeng@circleci.com"
+            git config --global user.name "Field Engineering CI User"
+      - run:
+          name: Add GitHub to known hosts
+          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
+          name: Test SSH connection to certificates repository
+          command: |
+            echo "Testing SSH connection to match repository..."
+            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
+            echo "Available SSH keys:"
+            ssh-add -l || echo "No SSH keys found"
       - run: bundle install
       - aws-cli/setup:
           use_brew: true
@@ -102,6 +140,7 @@ jobs:
       - run:
           name: Fastlane Testflight
           command: |
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
