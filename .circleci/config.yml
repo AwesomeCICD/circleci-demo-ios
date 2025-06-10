@@ -94,6 +94,12 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
+      - add_ssh_keys:
+          fingerprints:
+            - SHA256:D14H2oA/zMRTh1fp2ZWtY/wlTRaqPSnh/GEmUZ6mM/o
+      - run:
+          name: Add GitHub to known hosts
+          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
       - run: bundle install
       - aws-cli/setup:
           use_brew: true
