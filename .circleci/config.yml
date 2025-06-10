@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   aws-s3: circleci/aws-s3@4.1.1
-  aws-cli: circleci/aws-cli@5.3.5
+  aws-cli: circleci/aws-cli@5.4.0
 
 jobs:
   build-and-test:
@@ -52,6 +52,11 @@ jobs:
       - aws-s3/copy:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
+          auth:
+            - aws-cli/setup:
+                use_brew: true
+                role_arn: ${AWS_ROLE_ARN}
+                region: ${AWS_REGION}
           arguments: |
             --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION}
       - persist_to_workspace:
@@ -100,12 +105,6 @@ jobs:
           role_arn: ${AWS_ROLE_ARN}
           region: ${AWS_REGION}
       - run:
-          name: Copy signing certificates from S3
-          command: aws s3 cp s3://${S3_BUCKET_NAME}/certificates/certificates.tar.gz .
-      - run:
-          name: Extract signing certificates and provisioning profiles
-          command: tar -xzf certificates.tar.gz
-      - run:
           name: Fastlane Testflight
           command: |
             bundle exec fastlane snapshot update
@@ -128,6 +127,11 @@ jobs:
       - aws-s3/copy:
           from: build_info.json
           to: s3://${S3_BUCKET_NAME}/releases/build_info.json
+          auth:
+            - aws-cli/setup:
+                use_brew: true
+                role_arn: ${AWS_ROLE_ARN}
+                region: ${AWS_REGION}
           arguments: |
             --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION},environment=testflight
       - run:
