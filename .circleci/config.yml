@@ -7,7 +7,7 @@ orbs:
 jobs:
   build-and-test:
     macos:
-      xcode: "16.4.0"
+      xcode: "16.3.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -17,6 +17,18 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Debug iOS SDK Environment
+          command: |
+            echo "=== Xcode Version ==="
+            xcodebuild -version
+            echo "=== Available iOS SDKs ==="
+            xcodebuild -showsdks | grep -i ios
+            echo "=== Available Simulators ==="
+            xcrun simctl list devices --json | jq -r '.devices | to_entries[] | select(.key | contains("iOS")) | "\(.key): \(.value | map(.name) | join(", "))"' || echo "jq not available, using basic list:"
+            xcrun simctl list devices | grep -E "(iOS|iPhone)"
+            echo "=== Project Build Settings ==="
+            xcodebuild -showBuildSettings -project Game.xcodeproj -scheme Game | grep -E "(SDKROOT|IPHONEOS_DEPLOYMENT_TARGET|SDK)" | head -10
+      - run:
           name: Ruby and Bundle Setup
           command: |
             ruby --version
@@ -24,6 +36,23 @@ jobs:
             bundle --version
             bundle config set path 'vendor/bundle'
             bundle install --jobs 4 --retry 3
+      - run:
+          name: Force Compatible iOS SDK
+          command: |
+            echo "🔧 Setting compatible iOS SDK for build..."
+            # Get the latest available iOS SDK
+            LATEST_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+            echo "Latest available iOS SDK: $LATEST_SDK"
+
+            # Set environment variables to force compatible SDK
+            if [ ! -z "$LATEST_SDK" ]; then
+              echo "export IPHONEOS_DEPLOYMENT_TARGET=14.0" >> $BASH_ENV
+              echo "export SDKROOT=$LATEST_SDK" >> $BASH_ENV
+              echo "✅ Set iOS Deployment Target to 14.0"
+              echo "✅ Set SDK Root to $LATEST_SDK"
+            else
+              echo "⚠️  No iOS SDK found, using defaults"
+            fi
       - run:
           name: Fastlane
           command: |
@@ -68,7 +97,7 @@ jobs:
 
   adhoc:
     macos:
-      xcode: "16.4.0"
+      xcode: "16.3.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -114,7 +143,7 @@ jobs:
 
   beta:
     macos:
-      xcode: "16.4.0"
+      xcode: "16.3.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:

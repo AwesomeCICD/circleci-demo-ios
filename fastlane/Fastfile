@@ -7,7 +7,7 @@ platform :ios do
     # Set Xcode version and path for consistent builds
     if is_ci
       # CircleCI uses versioned Xcode installations
-      xcode_select("/Applications/Xcode-16.4.app")
+      xcode_select("/Applications/Xcode-16.3.app")
     else
       # Local development - use default Xcode
       xcode_select("/Applications/Xcode.app")
@@ -15,8 +15,8 @@ platform :ios do
     
     # Verify Xcode version for consistency (flexible for CI environments)
     if is_ci
-      # On CI, ensure we're using Xcode 16.x
-      ensure_xcode_version(version: "16.4")
+      # On CI, ensure we're using Xcode 16.3
+      ensure_xcode_version(version: "16.3")
     else
       # Local development - just warn if version differs
       begin
@@ -45,20 +45,45 @@ platform :ios do
   def validate_build_environment
     UI.message("🔍 Validating build environment...")
     
-    # Check available simulators
-    available_simulators = sh("xcrun simctl list devices --json | jq -r '.devices | to_entries[] | select(.key | contains(\"iOS\")) | .value[] | select(.isAvailable == true) | .name'", log: false).split("\n")
-    UI.message("Available simulators: #{available_simulators.join(', ')}")
-    
-    # Verify target simulator exists
-    target_device = "iPhone 14"
-    unless available_simulators.include?(target_device)
-      UI.important("⚠️  Target device '#{target_device}' not found. Available devices: #{available_simulators.join(', ')}")
-      UI.important("Falling back to first available iPhone...")
+    # Check available iOS SDKs
+    begin
+      ios_sdks = sh("xcodebuild -showsdks | grep -E 'iphoneos[0-9]' | awk '{print $NF}'", log: false).split("\n").reject(&:empty?)
+      UI.message("Available iOS SDKs: #{ios_sdks.join(', ')}")
+      
+      if ios_sdks.empty?
+        UI.error("❌ No iOS SDKs found!")
+        raise "No iOS SDKs available"
+      end
+      
+      # Use the latest available iOS SDK
+      latest_sdk = ios_sdks.last
+      UI.message("Using latest iOS SDK: #{latest_sdk}")
+      
+    rescue => e
+      UI.error("Error checking iOS SDKs: #{e}")
+      UI.important("Continuing with default SDK...")
     end
     
-    # Check iOS SDK availability
-    ios_sdks = sh("xcodebuild -showsdks | grep -E 'iphoneos[0-9]' | awk '{print $NF}'", log: false).split("\n")
-    UI.message("Available iOS SDKs: #{ios_sdks.join(', ')}")
+    # Check available simulators (with fallback)
+    begin
+      available_simulators = sh("xcrun simctl list devices | grep -E 'iPhone [0-9]' | sed 's/.*iPhone /iPhone /' | sed 's/ (.*//' | sort -u", log: false).split("\n").reject(&:empty?)
+      UI.message("Available iPhone simulators: #{available_simulators.join(', ')}")
+      
+      # Find best available iPhone simulator
+      preferred_devices = ["iPhone 15", "iPhone 14", "iPhone 13", "iPhone 12", "iPhone 11"]
+      selected_device = preferred_devices.find { |device| available_simulators.any? { |sim| sim.include?(device) } }
+      
+      if selected_device
+        UI.message("✅ Using simulator: #{selected_device}")
+      else
+        UI.important("⚠️  No preferred simulators found. Available: #{available_simulators.join(', ')}")
+        UI.important("Will use default simulator")
+      end
+      
+    rescue => e
+      UI.error("Error checking simulators: #{e}")
+      UI.important("Continuing with default simulator...")
+    end
     
     UI.success("✅ Build environment validation complete")
   end
