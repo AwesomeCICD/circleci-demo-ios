@@ -75,7 +75,7 @@ jobs:
           at: .
       - add_ssh_keys:
           fingerprints:
-            - "SHA256:1D10XYa3Ny4dj97HtRvzfJ7BHldugnM4UTYapMvDQRo"
+            - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
       - run:
           name: Set Git User
           command: |
@@ -116,7 +116,7 @@ jobs:
           at: .
       - add_ssh_keys:
           fingerprints:
-            - "SHA256:1D10XYa3Ny4dj97HtRvzfJ7BHldugnM4UTYapMvDQRo"
+            - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
       - run:
           name: Set Git User
           command: |
