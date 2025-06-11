@@ -162,6 +162,7 @@ platform :ios do
     UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
     UI.message("App Identifier: com.circleci.ios-game-demo")
     UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
+    UI.message("🔧 Will override project team ID with: #{ENV['APPLE_TEAM_ID']}")
     
     UI.message("📱 Fetching latest TestFlight build number...")
     
@@ -172,9 +173,14 @@ platform :ios do
         team_id: ENV['APPLE_TEAM_ID'],
         app_identifier: "com.circleci.ios-game-demo"
       )
-      UI.message("Latest build number: #{latest_build}")
+      UI.message("✅ Authentication successful! Latest build number: #{latest_build}")
     rescue => ex
-      UI.message("No previous builds found or error fetching: #{ex}")
+      UI.important("⚠️  TestFlight authentication failed: #{ex}")
+      UI.important("This is usually caused by:")
+      UI.important("1. Missing or incorrect FASTLANE_PASSWORD (should be app-specific password)")
+      UI.important("2. Apple ID doesn't have access to this app in App Store Connect")
+      UI.important("3. Incorrect APPLE_TEAM_ID")
+      UI.important("Continuing with build number 1...")
       latest_build = 0
     end
     
@@ -209,7 +215,7 @@ platform :ios do
       clean: is_ci,  # Clean build on CI
       configuration: "Release",
       destination: "generic/platform=iOS",
-      xcargs: "CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='match AppStore com.circleci.ios-game-demo'"
+      xcargs: "CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='match AppStore com.circleci.ios-game-demo' DEVELOPMENT_TEAM=#{ENV['APPLE_TEAM_ID']}"
     )
     
     UI.message("📤 Uploading to TestFlight...")
