@@ -8,6 +8,7 @@
 
 scheme "Game"
 
-sdk "iphoneos18.3"
+# SDK version removed - let Xcode use default SDK to avoid version mismatches
+# sdk "iphoneos18.3"
 
 output_directory "./"
