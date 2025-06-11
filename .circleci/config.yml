@@ -27,6 +27,7 @@ jobs:
       - run:
           name: Fastlane
           command: |
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -105,6 +106,7 @@ jobs:
       - run:
           name: Fastlane
           command: |
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -154,6 +156,7 @@ jobs:
       - run:
           name: Fastlane Testflight
           command: |
+            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
