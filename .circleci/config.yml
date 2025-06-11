@@ -16,12 +16,17 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      - run: bundle install
+      - run:
+          name: Ruby and Bundle Setup
+          command: |
+            ruby --version
+            gem --version
+            bundle --version
+            bundle config set path 'vendor/bundle'
+            bundle install --jobs 4 --retry 3
       - run:
           name: Fastlane
           command: |
-            echo $CIRCLE_SHA1
-            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -91,11 +96,15 @@ jobs:
             ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
             echo "Available SSH keys:"
             ssh-add -l || echo "No SSH keys found"
-      - run: bundle install
+      - run:
+          name: Ruby and Bundle Setup
+          command: |
+            ruby --version
+            bundle config set path 'vendor/bundle'
+            bundle install --jobs 4 --retry 3
       - run:
           name: Fastlane
           command: |
-            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -132,7 +141,12 @@ jobs:
             ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
             echo "Available SSH keys:"
             ssh-add -l || echo "No SSH keys found"
-      - run: bundle install
+      - run:
+          name: Ruby and Bundle Setup
+          command: |
+            ruby --version
+            bundle config set path 'vendor/bundle'
+            bundle install --jobs 4 --retry 3
       - aws-cli/setup:
           use_brew: true
           role_arn: ${AWS_ROLE_ARN}
@@ -140,7 +154,6 @@ jobs:
       - run:
           name: Fastlane Testflight
           command: |
-            bundle update fastlane
             bundle exec fastlane snapshot update
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
@@ -156,7 +169,6 @@ jobs:
             echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
             APP_VERSION=$(agvtool what-marketing-version -terse1)
-            # BUILD_NUMBER=$(agvtool what-version -terse)
             echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${APP_VERSION}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
       - aws-s3/copy:
           from: build_info.json
