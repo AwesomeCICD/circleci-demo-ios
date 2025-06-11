@@ -3,20 +3,83 @@ default_platform(:ios)
 platform :ios do
   before_all do
     setup_circle_ci
+    
+    # Set Xcode version and path for consistent builds
+    if is_ci
+      # CircleCI uses versioned Xcode installations
+      xcode_select("/Applications/Xcode-16.4.app")
+    else
+      # Local development - use default Xcode
+      xcode_select("/Applications/Xcode.app")
+    end
+    
+    # Verify Xcode version for consistency (flexible for CI environments)
+    if is_ci
+      # On CI, ensure we're using Xcode 16.x
+      ensure_xcode_version(version: "~> 16.0")
+    else
+      # Local development - just warn if version differs
+      begin
+        ensure_xcode_version(version: "~> 16.0")
+      rescue => ex
+        UI.important("⚠️  Local Xcode version may differ from CI: #{ex}")
+      end
+    end
+    
+    UI.message("Using Xcode: #{sh("xcode-select -p").strip}")
+    UI.message("Xcode version: #{sh("xcodebuild -version | head -1").strip}")
+    
+    # Clean build environment on CI for consistent builds
+    if is_ci
+      UI.message("🧹 Cleaning derived data for fresh CI build...")
+      clear_derived_data
+    end
+  end
+  
+  # Helper method to detect if running in CI environment
+  def is_ci
+    ENV['CI'] == 'true' || ENV['CIRCLECI'] == 'true'
+  end
+  
+  # Validate build environment before running lanes
+  def validate_build_environment
+    UI.message("🔍 Validating build environment...")
+    
+    # Check available simulators
+    available_simulators = sh("xcrun simctl list devices --json | jq -r '.devices | to_entries[] | select(.key | contains(\"iOS\")) | .value[] | select(.isAvailable == true) | .name'", log: false).split("\n")
+    UI.message("Available simulators: #{available_simulators.join(', ')}")
+    
+    # Verify target simulator exists
+    target_device = "iPhone 14"
+    unless available_simulators.include?(target_device)
+      UI.important("⚠️  Target device '#{target_device}' not found. Available devices: #{available_simulators.join(', ')}")
+      UI.important("Falling back to first available iPhone...")
+    end
+    
+    # Check iOS SDK availability
+    ios_sdks = sh("xcodebuild -showsdks | grep -E 'iphoneos[0-9]' | awk '{print $NF}'", log: false).split("\n")
+    UI.message("Available iOS SDKs: #{ios_sdks.join(', ')}")
+    
+    UI.success("✅ Build environment validation complete")
   end
 
   desc "Runs all the tests"
   lane :test do
+    validate_build_environment
+    
     scan(
       scheme: "Game",
       devices: ['iPhone 14'],
       output_directory: "output/scan",
-      code_coverage: true
+      code_coverage: true,
+      clean: is_ci  # Clean build on CI
     )
   end
 
   desc "Ad-hoc build"
   lane :adhoc do
+    validate_build_environment
+    
     # Use fastlane match for ad-hoc certificates and provisioning profiles
     match(type: "adhoc", readonly: true)
     
@@ -25,12 +88,15 @@ platform :ios do
       scheme: "Game",
       export_method: "ad-hoc",
       output_directory: "output",
-      output_name: "Game.ipa"
+      output_name: "Game.ipa",
+      clean: is_ci  # Clean build on CI
     )
   end
 
   desc "Submit a new Beta Build to Apple TestFlight"
   lane :beta do
+    validate_build_environment
+    
     UI.message("🚀 Starting TestFlight build process...")
     
     # Debug credentials (without exposing password)
@@ -85,7 +151,8 @@ platform :ios do
         }
       },
       output_directory: "output",
-      output_name: "Game.ipa"
+      output_name: "Game.ipa",
+      clean: is_ci  # Clean build on CI
     )
     
     UI.message("📤 Uploading to TestFlight...")
@@ -111,6 +178,8 @@ platform :ios do
   
   desc "Test Apple ID authentication"
   lane :test_auth do
+    validate_build_environment
+    
     UI.message("Testing Apple ID authentication...")
     UI.message("Username: #{ENV['FASTLANE_USER']}")
     UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
