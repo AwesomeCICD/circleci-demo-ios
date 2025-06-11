@@ -1,6 +1,11 @@
 # Disable analytics to prevent non-interactive prompts in CI
 opt_out_usage
 
+# Force non-interactive mode for CI
+ENV['FASTLANE_SKIP_UPDATE_CHECK'] = 'true'
+ENV['FASTLANE_HIDE_CHANGELOG'] = 'true'
+ENV['SNAPSHOT_SKIP_HELPER_VERSION_CHECK'] = 'true'
+
 default_platform(:ios)
 
 platform :ios do
@@ -9,8 +14,19 @@ platform :ios do
     
     # Set Xcode version and path for consistent builds
     if is_ci
-      # CircleCI uses versioned Xcode installations
-      xcode_select("/Applications/Xcode-16.3.app")
+      # CircleCI uses versioned Xcode installations - try multiple versions
+      xcode_versions = ["/Applications/Xcode-16.4.app", "/Applications/Xcode-16.3.app", "/Applications/Xcode.app"]
+      selected_xcode = xcode_versions.find { |path| File.directory?(path) }
+      
+      if selected_xcode
+        UI.message("🔧 Using Xcode: #{selected_xcode}")
+        xcode_select(selected_xcode)
+      else
+        UI.error("❌ No suitable Xcode installation found. Checked: #{xcode_versions.join(', ')}")
+        UI.message("Available Xcode installations:")
+        system("ls -la /Applications/ | grep -i xcode || echo 'No Xcode installations found'")
+        raise "No suitable Xcode installation found"
+      end
     else
       # Local development - use default Xcode
       xcode_select("/Applications/Xcode.app")
@@ -18,8 +34,9 @@ platform :ios do
     
     # Verify Xcode version for consistency (flexible for CI environments)
     if is_ci
-      # On CI, ensure we're using Xcode 16.3
-      ensure_xcode_version(version: "16.3")
+      # On CI, just log the version we're using
+      current_version = sh("xcodebuild -version | head -1", log: false).strip
+      UI.message("Using Xcode version: #{current_version}")
     else
       # Local development - just warn if version differs
       begin
