@@ -16,11 +16,11 @@ platform :ios do
     # Verify Xcode version for consistency (flexible for CI environments)
     if is_ci
       # On CI, ensure we're using Xcode 16.x
-      ensure_xcode_version(version: "~> 16.0")
+      ensure_xcode_version(version: "16.0")
     else
       # Local development - just warn if version differs
       begin
-        ensure_xcode_version(version: "~> 16.0")
+        ensure_xcode_version(version: "16.0")
       rescue => ex
         UI.important("⚠️  Local Xcode version may differ from CI: #{ex}")
       end
