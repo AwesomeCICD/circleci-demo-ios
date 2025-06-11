@@ -40,13 +40,22 @@ jobs:
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
+            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
+            echo "📦 Updating to modern Bundler..."
+            gem install bundler -v '>= 2.4.0' --no-document || true
+            bundle --version
+
+            # Clean old bundler cache and regenerate
+            rm -rf vendor/bundle .bundle Gemfile.lock || true
+
             # Configure bundler for macOS platform
             bundle config set --local path 'vendor/bundle'
             bundle config set --local deployment 'false'
             bundle config set --local platform 'x86_64-darwin-24'
+            bundle config set --local without 'development test'
 
-            # Clean and install with proper environment
-            bundle clean --force || true
+            # Generate new lockfile and install
+            bundle lock --add-platform x86_64-darwin-24
             bundle install --jobs 4 --retry 3 --verbose
       - run:
           name: Force Compatible iOS SDK
@@ -150,13 +159,22 @@ jobs:
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
+            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
+            echo "📦 Updating to modern Bundler..."
+            gem install bundler -v '>= 2.4.0' --no-document || true
+            bundle --version
+
+            # Clean old bundler cache and regenerate
+            rm -rf vendor/bundle .bundle Gemfile.lock || true
+
             # Configure bundler for macOS platform
             bundle config set --local path 'vendor/bundle'
             bundle config set --local deployment 'false'
             bundle config set --local platform 'x86_64-darwin-24'
+            bundle config set --local without 'development test'
 
-            # Clean and install with proper environment
-            bundle clean --force || true
+            # Generate new lockfile and install
+            bundle lock --add-platform x86_64-darwin-24
             bundle install --jobs 4 --retry 3 --verbose
       - run:
           name: Fastlane
@@ -210,13 +228,22 @@ jobs:
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
+            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
+            echo "📦 Updating to modern Bundler..."
+            gem install bundler -v '>= 2.4.0' --no-document || true
+            bundle --version
+
+            # Clean old bundler cache and regenerate
+            rm -rf vendor/bundle .bundle Gemfile.lock || true
+
             # Configure bundler for macOS platform
             bundle config set --local path 'vendor/bundle'
             bundle config set --local deployment 'false'
             bundle config set --local platform 'x86_64-darwin-24'
+            bundle config set --local without 'development test'
 
-            # Clean and install with proper environment
-            bundle clean --force || true
+            # Generate new lockfile and install
+            bundle lock --add-platform x86_64-darwin-24
             bundle install --jobs 4 --retry 3 --verbose
       - aws-cli/setup:
           use_brew: true

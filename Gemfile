@@ -1,5 +1,9 @@
 source "https://rubygems.org"
 
+# Force modern Bundler version for Ruby 3.4+ compatibility
+ruby RUBY_VERSION
+gem 'bundler', '>= 2.4.0'
+
 # setup_circle_ci action was released in 2.107.0
 gem 'fastlane', '>= 2.107'
 gem 'abbrev'
