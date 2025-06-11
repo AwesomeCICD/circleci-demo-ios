@@ -34,8 +34,20 @@ jobs:
             ruby --version
             gem --version
             bundle --version
-            bundle config set path 'vendor/bundle'
-            bundle install --jobs 4 --retry 3
+
+            # Fix Ruby 3.4+ compilation environment for macOS
+            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
+            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
+
+            # Configure bundler for macOS platform
+            bundle config set --local path 'vendor/bundle'
+            bundle config set --local deployment 'false'
+            bundle config set --local platform 'x86_64-darwin-24'
+
+            # Clean and install with proper environment
+            bundle clean --force || true
+            bundle install --jobs 4 --retry 3 --verbose
       - run:
           name: Force Compatible iOS SDK
           command: |
@@ -130,8 +142,22 @@ jobs:
           name: Ruby and Bundle Setup
           command: |
             ruby --version
-            bundle config set path 'vendor/bundle'
-            bundle install --jobs 4 --retry 3
+            gem --version
+            bundle --version
+
+            # Fix Ruby 3.4+ compilation environment for macOS
+            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
+            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
+
+            # Configure bundler for macOS platform
+            bundle config set --local path 'vendor/bundle'
+            bundle config set --local deployment 'false'
+            bundle config set --local platform 'x86_64-darwin-24'
+
+            # Clean and install with proper environment
+            bundle clean --force || true
+            bundle install --jobs 4 --retry 3 --verbose
       - run:
           name: Fastlane
           command: |
@@ -176,8 +202,22 @@ jobs:
           name: Ruby and Bundle Setup
           command: |
             ruby --version
-            bundle config set path 'vendor/bundle'
-            bundle install --jobs 4 --retry 3
+            gem --version
+            bundle --version
+
+            # Fix Ruby 3.4+ compilation environment for macOS
+            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
+            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
+
+            # Configure bundler for macOS platform
+            bundle config set --local path 'vendor/bundle'
+            bundle config set --local deployment 'false'
+            bundle config set --local platform 'x86_64-darwin-24'
+
+            # Clean and install with proper environment
+            bundle clean --force || true
+            bundle install --jobs 4 --retry 3 --verbose
       - aws-cli/setup:
           use_brew: true
           role_arn: ${AWS_ROLE_ARN}
