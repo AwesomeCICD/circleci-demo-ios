@@ -115,6 +115,20 @@ jobs:
           root: .
           paths:
             - output
+      # Debug Slack configuration
+      - run:
+          name: Debug Slack Configuration
+          command: |
+            echo "🔍 Debugging Slack notification setup..."
+            echo "SLACK_ACCESS_TOKEN set: ${SLACK_ACCESS_TOKEN:+Yes}"
+            echo "SLACK_WEBHOOK set: ${SLACK_WEBHOOK:+Yes}"
+            echo "Current branch: ${CIRCLE_BRANCH}"
+            echo "Build status will determine which notification triggers"
+            if [ -z "${SLACK_ACCESS_TOKEN}" ] && [ -z "${SLACK_WEBHOOK}" ]; then
+              echo "❌ Neither SLACK_ACCESS_TOKEN nor SLACK_WEBHOOK is set!"
+              echo "Please set one of these in CircleCI project environment variables"
+            fi
+          when: always
       # Slack notifications
       - slack/notify:
           channel: fe-workout
