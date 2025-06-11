@@ -7,7 +7,7 @@ orbs:
 jobs:
   build-and-test:
     macos:
-      xcode: "16.2.0"
+      xcode: "16.4.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -62,7 +62,7 @@ jobs:
 
   adhoc:
     macos:
-      xcode: "16.2.0"
+      xcode: "16.4.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -103,7 +103,7 @@ jobs:
 
   beta:
     macos:
-      xcode: "16.2.0"
+      xcode: "16.4.0"
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
