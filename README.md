@@ -375,7 +375,6 @@ This project uses **fastlane match** with a Git repository for secure, automated
    TEAM_ID=YOUR_TEAM_ID
 
    # Match Configuration  
-   MATCH_PASSWORD=your-strong-password
    MATCH_KEYCHAIN_PASSWORD=your-keychain-password
 
    # App Configuration
