@@ -162,6 +162,16 @@ platform :ios do
     UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
     UI.message("App Identifier: com.circleci.ios-game-demo")
     UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
+    
+    # Debug password format (check for asterisks)
+    password = ENV['FASTLANE_PASSWORD']
+    if password&.include?('*')
+      UI.error("❌ FASTLANE_PASSWORD contains asterisks! You may have copied masked text.")
+      UI.error("Password preview: #{password[0..2]}...#{password[-3..-1]} (showing first 3 and last 3 chars)")
+    else
+      UI.message("🔍 Password format check: #{password[0]}...#{password[-1]} (first and last chars)")
+    end
+    
     UI.message("🔧 Will override project team ID with: #{ENV['APPLE_TEAM_ID']}")
     
     UI.message("📱 Fetching latest TestFlight build number...")
