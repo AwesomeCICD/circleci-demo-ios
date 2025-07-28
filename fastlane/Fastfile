@@ -234,7 +234,6 @@ platform :ios do
     pilot(
       username: ENV['FASTLANE_USER'],
       team_id: ENV['APPLE_TEAM_ID'],
-      password: ENV['FASTLANE_PASSWORD'],
       app_identifier: "com.circleci.ios-game-demo",
       skip_waiting_for_build_processing: true,
       changelog: "Build #{new_build_number} - Automated CI/CD build"
