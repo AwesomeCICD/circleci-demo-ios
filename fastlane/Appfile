@@ -1,8 +1,16 @@
 app_identifier "com.circleci.ios-game-demo" # The bundle identifier of your app
 
-apple_id ENV["APPLE_ID"] # Your Apple email address
+# Apple ID authentication (fallback if API key not available)
+apple_id ENV["APPLE_ID"] || ENV["FASTLANE_USER"] # Your Apple email address
 
-team_id ENV["TEAM_ID"] # Developer Portal Team ID
+team_id ENV["TEAM_ID"] || ENV["APPLE_TEAM_ID"] # Developer Portal Team ID
+
+# App Store Connect API Key authentication (preferred for CI/CD)
+# When these variables are set, they will be used instead of Apple ID authentication
+# This bypasses 2FA requirements in CI/CD environments
+if ENV["APP_STORE_CONNECT_API_KEY_ID"] && !ENV["APP_STORE_CONNECT_API_KEY_ID"].empty?
+  puts "🔑 App Store Connect API Key detected - will use API key authentication"
+end
 
 # you can even provide different app identifiers, Apple IDs and team names per lane:
 # More information: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Appfile.md

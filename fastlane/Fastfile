@@ -144,32 +144,73 @@ platform :ios do
     
     UI.message("🚀 Starting TestFlight build process...")
     
-    # Validate required environment variables
-    required_env_vars = ['FASTLANE_USER', 'FASTLANE_PASSWORD', 'APPLE_TEAM_ID']
-    missing_vars = required_env_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
+    # Check authentication method - prefer App Store Connect API key
+    use_api_key = !ENV['APP_STORE_CONNECT_API_KEY_ID'].nil? && !ENV['APP_STORE_CONNECT_API_KEY_ID'].empty?
     
-    if !missing_vars.empty?
-      UI.error("❌ Missing required environment variables: #{missing_vars.join(', ')}")
-      UI.error("Please set these variables in CircleCI project settings:")
-      UI.error("- FASTLANE_USER: Your Apple ID email")
-      UI.error("- FASTLANE_PASSWORD: App-specific password from Apple ID settings")
-      UI.error("- APPLE_TEAM_ID: Your Apple Developer Team ID")
-      raise "Missing required environment variables: #{missing_vars.join(', ')}"
-    end
-    
-    # Debug credentials (without exposing password)
-    UI.message("Using Apple ID: #{ENV['FASTLANE_USER']}")
-    UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
-    UI.message("App Identifier: com.circleci.ios-game-demo")
-    UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
-    
-    # Debug password format (check for asterisks)
-    password = ENV['FASTLANE_PASSWORD']
-    if password&.include?('*')
-      UI.error("❌ FASTLANE_PASSWORD contains asterisks! You may have copied masked text.")
-      UI.error("Password preview: #{password[0..2]}...#{password[-3..-1]} (showing first 3 and last 3 chars)")
+    if use_api_key
+      UI.message("🔑 Using App Store Connect API Key authentication (bypasses 2FA)")
+      
+      # Validate required environment variables for API key
+      required_env_vars = ['APP_STORE_CONNECT_API_KEY_ID', 'APP_STORE_CONNECT_API_ISSUER_ID', 'APP_STORE_CONNECT_API_KEY_CONTENT', 'APPLE_TEAM_ID']
+      missing_vars = required_env_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
+      
+      if !missing_vars.empty?
+        UI.error("❌ Missing required environment variables for API Key: #{missing_vars.join(', ')}")
+        UI.error("Please set these variables in CircleCI project settings:")
+        UI.error("- APP_STORE_CONNECT_API_KEY_ID: Your API Key ID from App Store Connect")
+        UI.error("- APP_STORE_CONNECT_API_ISSUER_ID: Your Issuer ID from App Store Connect")
+        UI.error("- APP_STORE_CONNECT_API_KEY_CONTENT: Base64 encoded content of your .p8 key file")
+        UI.error("- APPLE_TEAM_ID: Your Apple Developer Team ID")
+        raise "Missing required environment variables: #{missing_vars.join(', ')}"
+      end
+      
+      # Setup App Store Connect API Key
+      app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
+        key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'],
+        is_key_content_base64: true
+      )
+      
+      UI.message("Using API Key ID: #{ENV['APP_STORE_CONNECT_API_KEY_ID']}")
+      UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+      UI.message("App Identifier: com.circleci.ios-game-demo")
+      
     else
-      UI.message("🔍 Password format check: #{password[0]}...#{password[-1]} (first and last chars)")
+      UI.message("🔐 Using Apple ID authentication (requires app-specific password)")
+      
+      # Validate required environment variables for Apple ID
+      required_env_vars = ['FASTLANE_USER', 'FASTLANE_PASSWORD', 'APPLE_TEAM_ID']
+      missing_vars = required_env_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
+      
+      if !missing_vars.empty?
+        UI.error("❌ Missing required environment variables: #{missing_vars.join(', ')}")
+        UI.error("Please set these variables in CircleCI project settings:")
+        UI.error("- FASTLANE_USER: Your Apple ID email")
+        UI.error("- FASTLANE_PASSWORD: App-specific password from Apple ID settings")
+        UI.error("- APPLE_TEAM_ID: Your Apple Developer Team ID")
+        UI.error("")
+        UI.error("💡 For easier CI/CD without 2FA, consider using App Store Connect API Key instead:")
+        UI.error("- APP_STORE_CONNECT_API_KEY_ID")
+        UI.error("- APP_STORE_CONNECT_API_ISSUER_ID") 
+        UI.error("- APP_STORE_CONNECT_API_KEY_CONTENT")
+        raise "Missing required environment variables: #{missing_vars.join(', ')}"
+      end
+      
+      # Debug credentials (without exposing password)
+      UI.message("Using Apple ID: #{ENV['FASTLANE_USER']}")
+      UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+      UI.message("App Identifier: com.circleci.ios-game-demo")
+      UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
+      
+      # Debug password format (check for asterisks)
+      password = ENV['FASTLANE_PASSWORD']
+      if password&.include?('*')
+        UI.error("❌ FASTLANE_PASSWORD contains asterisks! You may have copied masked text.")
+        UI.error("Password preview: #{password[0..2]}...#{password[-3..-1]} (showing first 3 and last 3 chars)")
+      else
+        UI.message("🔍 Password format check: #{password[0]}...#{password[-1]} (first and last chars)")
+      end
     end
     
     UI.message("🔧 Will override project team ID with: #{ENV['APPLE_TEAM_ID']}")
@@ -178,18 +219,33 @@ platform :ios do
     
     # Get the latest TestFlight build number with authentication
     begin
-      latest_build = latest_testflight_build_number(
-        username: ENV['FASTLANE_USER'],
-        team_id: ENV['APPLE_TEAM_ID'],
-        app_identifier: "com.circleci.ios-game-demo"
-      )
+      if use_api_key
+        latest_build = latest_testflight_build_number(
+          team_id: ENV['APPLE_TEAM_ID'],
+          app_identifier: "com.circleci.ios-game-demo"
+        )
+      else
+        latest_build = latest_testflight_build_number(
+          username: ENV['FASTLANE_USER'],
+          team_id: ENV['APPLE_TEAM_ID'],
+          app_identifier: "com.circleci.ios-game-demo"
+        )
+      end
       UI.message("✅ Authentication successful! Latest build number: #{latest_build}")
     rescue => ex
       UI.important("⚠️  TestFlight authentication failed: #{ex}")
-      UI.important("This is usually caused by:")
-      UI.important("1. Missing or incorrect FASTLANE_PASSWORD (should be app-specific password)")
-      UI.important("2. Apple ID doesn't have access to this app in App Store Connect")
-      UI.important("3. Incorrect APPLE_TEAM_ID")
+      if use_api_key
+        UI.important("This is usually caused by:")
+        UI.important("1. Invalid API Key ID or Issuer ID")
+        UI.important("2. Incorrect API Key content or encoding")
+        UI.important("3. API Key doesn't have sufficient permissions")
+        UI.important("4. Incorrect APPLE_TEAM_ID")
+      else
+        UI.important("This is usually caused by:")
+        UI.important("1. Missing or incorrect FASTLANE_PASSWORD (should be app-specific password)")
+        UI.important("2. Apple ID doesn't have access to this app in App Store Connect")
+        UI.important("3. Incorrect APPLE_TEAM_ID")
+      end
       UI.important("Continuing with build number 1...")
       latest_build = 0
     end
@@ -231,13 +287,22 @@ platform :ios do
     UI.message("📤 Uploading to TestFlight...")
     
     # Upload to TestFlight with authentication
-    pilot(
-      username: ENV['FASTLANE_USER'],
-      team_id: ENV['APPLE_TEAM_ID'],
-      app_identifier: "com.circleci.ios-game-demo",
-      skip_waiting_for_build_processing: true,
-      changelog: "Build #{new_build_number} - Automated CI/CD build"
-    )
+    if use_api_key
+      pilot(
+        team_id: ENV['APPLE_TEAM_ID'],
+        app_identifier: "com.circleci.ios-game-demo",
+        skip_waiting_for_build_processing: true,
+        changelog: "Build #{new_build_number} - Automated CI/CD build"
+      )
+    else
+      pilot(
+        username: ENV['FASTLANE_USER'],
+        team_id: ENV['APPLE_TEAM_ID'],
+        app_identifier: "com.circleci.ios-game-demo",
+        skip_waiting_for_build_processing: true,
+        changelog: "Build #{new_build_number} - Automated CI/CD build"
+      )
+    end
     
     UI.message("🏷️ Tagging release...")
     
@@ -253,24 +318,57 @@ platform :ios do
   lane :test_auth do
     validate_build_environment
     
-    UI.message("Testing Apple ID authentication...")
-    UI.message("Username: #{ENV['FASTLANE_USER']}")
-    UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+    # Check authentication method - prefer App Store Connect API key
+    use_api_key = !ENV['APP_STORE_CONNECT_API_KEY_ID'].nil? && !ENV['APP_STORE_CONNECT_API_KEY_ID'].empty?
     
-    begin
-      latest_build = latest_testflight_build_number(
-        username: ENV['FASTLANE_USER'],
-        team_id: ENV['APPLE_TEAM_ID'],
-        app_identifier: "com.circleci.ios-game-demo"
+    if use_api_key
+      UI.message("Testing App Store Connect API Key authentication...")
+      UI.message("API Key ID: #{ENV['APP_STORE_CONNECT_API_KEY_ID']}")
+      UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+      
+      # Setup App Store Connect API Key
+      app_store_connect_api_key(
+        key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
+        issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
+        key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'],
+        is_key_content_base64: true
       )
-      UI.success("✅ Authentication successful! Latest build number: #{latest_build}")
-    rescue => ex
-      UI.error("❌ Authentication failed: #{ex}")
-      UI.error("Please verify:")
-      UI.error("1. FASTLANE_USER is correct Apple ID")
-      UI.error("2. FASTLANE_PASSWORD is an app-specific password")
-      UI.error("3. Apple ID has access to this app in App Store Connect")
-      UI.error("4. APPLE_TEAM_ID is correct")
+      
+      begin
+        latest_build = latest_testflight_build_number(
+          team_id: ENV['APPLE_TEAM_ID'],
+          app_identifier: "com.circleci.ios-game-demo"
+        )
+        UI.success("✅ API Key authentication successful! Latest build number: #{latest_build}")
+      rescue => ex
+        UI.error("❌ API Key authentication failed: #{ex}")
+        UI.error("Please verify:")
+        UI.error("1. APP_STORE_CONNECT_API_KEY_ID is correct")
+        UI.error("2. APP_STORE_CONNECT_API_ISSUER_ID is correct")
+        UI.error("3. APP_STORE_CONNECT_API_KEY_CONTENT is properly base64 encoded")
+        UI.error("4. API Key has sufficient permissions in App Store Connect")
+        UI.error("5. APPLE_TEAM_ID is correct")
+      end
+    else
+      UI.message("Testing Apple ID authentication...")
+      UI.message("Username: #{ENV['FASTLANE_USER']}")
+      UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
+      
+      begin
+        latest_build = latest_testflight_build_number(
+          username: ENV['FASTLANE_USER'],
+          team_id: ENV['APPLE_TEAM_ID'],
+          app_identifier: "com.circleci.ios-game-demo"
+        )
+        UI.success("✅ Authentication successful! Latest build number: #{latest_build}")
+      rescue => ex
+        UI.error("❌ Authentication failed: #{ex}")
+        UI.error("Please verify:")
+        UI.error("1. FASTLANE_USER is correct Apple ID")
+        UI.error("2. FASTLANE_PASSWORD is an app-specific password")
+        UI.error("3. Apple ID has access to this app in App Store Connect")
+        UI.error("4. APPLE_TEAM_ID is correct")
+      end
     end
   end
 end

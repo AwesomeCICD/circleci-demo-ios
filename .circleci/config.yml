@@ -344,6 +344,12 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
+      # App Store Connect API Key authentication (bypasses 2FA)
+      # Set these environment variables in CircleCI project settings:
+      # - APP_STORE_CONNECT_API_KEY_ID: Your API Key ID from App Store Connect
+      # - APP_STORE_CONNECT_API_ISSUER_ID: Your Issuer ID from App Store Connect
+      # - APP_STORE_CONNECT_API_KEY_CONTENT: Base64 encoded content of your .p8 key file
+      # - APPLE_TEAM_ID: Your Apple Developer Team ID
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
