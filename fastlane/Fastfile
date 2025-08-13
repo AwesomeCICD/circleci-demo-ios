@@ -360,16 +360,8 @@ platform :ios do
 
   # Helper method to validate app icons
   def validate_app_icons
-    app_icon_path = "Game/Assets.xcassets/AppIcon.appiconset"
+    app_icon_path = "../Game/Assets.xcassets/AppIcon.appiconset"
     contents_json = "#{app_icon_path}/Contents.json"
-
-    # Debug: Show current working directory and file structure
-    UI.message("Current working directory: #{Dir.pwd}")
-    UI.message("Checking for app icon path: #{app_icon_path}")
-    UI.message("Contents of Game/Assets.xcassets/:")
-    system("ls -la Game/Assets.xcassets/ || echo 'Game/Assets.xcassets/ not found'")
-    UI.message("Contents of current directory:")
-    system("ls -la . | head -10")
 
     # Check if AppIcon.appiconset exists
     unless File.directory?(app_icon_path)
@@ -478,7 +470,7 @@ platform :ios do
 
   # Helper method to validate Info.plist
   def validate_info_plist
-    info_plist_path = "Game/Info.plist"
+    info_plist_path = "../Game/Info.plist"
 
     unless File.exist?(info_plist_path)
       UI.user_error!("Info.plist not found at #{info_plist_path}")
@@ -595,7 +587,7 @@ platform :ios do
     expected_bundle_id = "com.circleci.ios-game-demo"
 
     # Check Appfile
-    appfile_path = "fastlane/Appfile"
+    appfile_path = "Appfile"
     if File.exist?(appfile_path)
       appfile_content = File.read(appfile_path)
       if appfile_content.include?(expected_bundle_id)
@@ -606,7 +598,7 @@ platform :ios do
     end
 
     # Check Info.plist (if it uses the variable, that's fine)
-    info_plist_path = "Game/Info.plist"
+    info_plist_path = "../Game/Info.plist"
     if File.exist?(info_plist_path)
       plist_content = File.read(info_plist_path)
       if plist_content.include?("$(PRODUCT_BUNDLE_IDENTIFIER)")
