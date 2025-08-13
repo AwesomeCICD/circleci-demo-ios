@@ -9,6 +9,7 @@ jobs:
   build-and-test:
     macos:
       xcode: "16.4.0"
+    resource_class: m4pro.medium
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -206,6 +207,7 @@ jobs:
   adhoc:
     macos:
       xcode: "16.3.0"
+    resource_class: m4pro.medium
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -339,6 +341,7 @@ jobs:
   beta:
     macos:
       xcode: "16.3.0"
+    resource_class: m4pro.medium
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
@@ -523,6 +526,7 @@ jobs:
   validate:
     macos:
       xcode: "16.3.0"
+    resource_class: m4pro.medium
     working_directory: /Users/distiller/project
     environment:
       FL_OUTPUT_DIR: output
@@ -621,8 +625,3 @@ workflows:
               only: main
           requires:
             - build-and-test
-
-postgres:
-  resource_limits:
-    cpu: "1"
-    memory: 2048M
