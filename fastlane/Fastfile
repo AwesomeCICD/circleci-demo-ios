@@ -363,6 +363,14 @@ platform :ios do
     app_icon_path = "Game/Assets.xcassets/AppIcon.appiconset"
     contents_json = "#{app_icon_path}/Contents.json"
 
+    # Debug: Show current working directory and file structure
+    UI.message("Current working directory: #{Dir.pwd}")
+    UI.message("Checking for app icon path: #{app_icon_path}")
+    UI.message("Contents of Game/Assets.xcassets/:")
+    system("ls -la Game/Assets.xcassets/ || echo 'Game/Assets.xcassets/ not found'")
+    UI.message("Contents of current directory:")
+    system("ls -la . | head -10")
+
     # Check if AppIcon.appiconset exists
     unless File.directory?(app_icon_path)
       UI.user_error!("AppIcon.appiconset directory not found at #{app_icon_path}")
