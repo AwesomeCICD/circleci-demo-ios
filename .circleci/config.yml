@@ -37,12 +37,12 @@ jobs:
             bundle --version
 
             # Fix Ruby 3.4+ compilation environment for macOS
-            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            echo "Setting up Ruby environment for macOS compilation..."
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
             # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "📦 Updating to modern Bundler..."
+            echo "Updating to modern Bundler..."
             gem install bundler -v '>= 2.4.0' --no-document || true
             bundle --version
 
@@ -61,7 +61,7 @@ jobs:
       - run:
           name: Force Compatible iOS SDK
           command: |
-            echo "🔧 Setting compatible iOS SDK for build..."
+            echo "Setting compatible iOS SDK for build..."
             # Get the latest available iOS SDK
             LATEST_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
             echo "Latest available iOS SDK: $LATEST_SDK"
@@ -70,10 +70,10 @@ jobs:
             if [ ! -z "$LATEST_SDK" ]; then
               echo "export IPHONEOS_DEPLOYMENT_TARGET=14.0" >> $BASH_ENV
               echo "export SDKROOT=$LATEST_SDK" >> $BASH_ENV
-              echo "✅ Set iOS Deployment Target to 14.0"
-              echo "✅ Set SDK Root to $LATEST_SDK"
+              echo "Set iOS Deployment Target to 14.0"
+              echo "Set SDK Root to $LATEST_SDK"
             else
-              echo "⚠️  No iOS SDK found, using defaults"
+              echo "No iOS SDK found, using defaults"
             fi
       - run:
           name: Fastlane
@@ -119,13 +119,13 @@ jobs:
       - run:
           name: Debug Slack Configuration
           command: |
-            echo "🔍 Debugging Slack notification setup..."
+            echo "Debugging Slack notification setup..."
             echo "SLACK_ACCESS_TOKEN set: ${SLACK_ACCESS_TOKEN:+Yes}"
             echo "SLACK_WEBHOOK set: ${SLACK_WEBHOOK:+Yes}"
             echo "Current branch: ${CIRCLE_BRANCH}"
             echo "Build status will determine which notification triggers"
             if [ -z "${SLACK_ACCESS_TOKEN}" ] && [ -z "${SLACK_WEBHOOK}" ]; then
-              echo "❌ Neither SLACK_ACCESS_TOKEN nor SLACK_WEBHOOK is set!"
+              echo "Neither SLACK_ACCESS_TOKEN nor SLACK_WEBHOOK is set!"
               echo "Please set one of these in CircleCI project environment variables"
             fi
           when: always
@@ -140,7 +140,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "❌ *iOS Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
+                    "text": "*iOS Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
                   }
                 },
                 {
@@ -176,7 +176,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "✅ *iOS Build Successful* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
+                    "text": "*iOS Build Successful* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
                   }
                 },
                 {
@@ -242,12 +242,12 @@ jobs:
             bundle --version
 
             # Fix Ruby 3.4+ compilation environment for macOS
-            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            echo "Setting up Ruby environment for macOS compilation..."
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
             # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "📦 Updating to modern Bundler..."
+            echo "Updating to modern Bundler..."
             gem install bundler -v '>= 2.4.0' --no-document || true
             bundle --version
 
@@ -281,7 +281,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "❌ *iOS Ad-hoc Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>"
+                    "text": "*iOS Ad-hoc Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>"
                   }
                 },
                 {
@@ -309,7 +309,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "📱 *iOS Ad-hoc Build Ready* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\n🎉 Your .ipa file is ready for distribution!"
+                    "text": "*iOS Ad-hoc Build Ready* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nYour .ipa file is ready for distribution!"
                   }
                 },
                 {
@@ -381,12 +381,12 @@ jobs:
             bundle --version
 
             # Fix Ruby 3.4+ compilation environment for macOS
-            echo "🔧 Setting up Ruby environment for macOS compilation..."
+            echo "Setting up Ruby environment for macOS compilation..."
             export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
             export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
 
             # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "📦 Updating to modern Bundler..."
+            echo "Updating to modern Bundler..."
             gem install bundler -v '>= 2.4.0' --no-document || true
             bundle --version
 
@@ -449,7 +449,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🚨 *TestFlight Deployment Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Beta TestFlight\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\n❌ The iOS app failed to deploy to TestFlight"
+                    "text": "*TestFlight Deployment Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Beta TestFlight\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nThe iOS app failed to deploy to TestFlight"
                   }
                 },
                 {
@@ -485,7 +485,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🚀 *TestFlight Deployment Successful!* \n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Branch:* `${CIRCLE_BRANCH}`\n*Version:* ${APP_VERSION}\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\n✈️ Your iOS app is now available on TestFlight!"
+                    "text": "*TestFlight Deployment Successful!* \n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Branch:* `${CIRCLE_BRANCH}`\n*Version:* ${APP_VERSION}\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nYour iOS app is now available on TestFlight!"
                   }
                 },
                 {
@@ -520,19 +520,101 @@ jobs:
               ]
             }
 
+  validate:
+    macos:
+      xcode: "16.3.0"
+    working_directory: /Users/distiller/project
+    environment:
+      FL_OUTPUT_DIR: output
+      FASTLANE_LANE: validate_app
+    shell: /bin/bash --login -o pipefail
+    steps:
+      - checkout
+      - run:
+          name: Ruby and Bundle Setup
+          command: |
+            ruby --version
+            gem --version
+            bundle --version
+
+            # Fix Ruby 3.4+ compilation environment for macOS
+            echo "Setting up Ruby environment for macOS compilation..."
+            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
+            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
+
+            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
+            echo "Updating to modern Bundler..."
+            gem install bundler -v '>= 2.4.0' --no-document || true
+            bundle --version
+
+            # Clean old bundler cache and regenerate
+            rm -rf vendor/bundle .bundle Gemfile.lock || true
+
+            # Configure bundler for macOS platform
+            bundle config set --local path 'vendor/bundle'
+            bundle config set --local deployment 'false'
+            bundle config set --local platform 'x86_64-darwin-24'
+            bundle config set --local without 'development test'
+
+            # Generate new lockfile and install
+            bundle lock --add-platform x86_64-darwin-24
+            bundle install --jobs 4 --retry 3 --verbose
+      - run:
+          name: Validate App Configuration
+          command: |
+            echo "Running comprehensive app validation..."
+            bundle exec fastlane $FASTLANE_LANE
+      # Slack notifications for validation failures
+      - slack/notify:
+          channel: fe-workout
+          event: fail
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*App Validation Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* App Validation\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nCheck the logs for validation errors (app icons, Info.plist, API keys, etc.)"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Validation Logs"
+                      },
+                      "url": "${CIRCLE_BUILD_URL}"
+                    }
+                  ]
+                }
+              ]
+            }
+
 workflows:
   build-test-adhoc:
     jobs:
+      - validate:
+          filters:
+            branches:
+              only:
+                - main
+                - /dev-.*/
       - build-and-test:
           filters:
             branches:
               only: main
+          requires:
+            - validate
       - adhoc:
           filters:
             branches:
               only: /dev-.*/
           requires:
-            - build-and-test
+            - validate
       - beta:
           filters:
             branches:

@@ -11,13 +11,13 @@ default_platform(:ios)
 platform :ios do
   before_all do
     setup_circle_ci
-    
+
     # Set Xcode version and path for consistent builds
     if is_ci
       # CircleCI uses versioned Xcode installations - try multiple versions
       xcode_versions = ["/Applications/Xcode-16.4.app", "/Applications/Xcode-16.3.app", "/Applications/Xcode.app"]
       selected_xcode = xcode_versions.find { |path| File.directory?(path) }
-      
+
       if selected_xcode
         UI.message("🔧 Using Xcode: #{selected_xcode}")
         xcode_select(selected_xcode)
@@ -31,7 +31,7 @@ platform :ios do
       # Local development - use default Xcode
       xcode_select("/Applications/Xcode.app")
     end
-    
+
     # Verify Xcode version for consistency (flexible for CI environments)
     if is_ci
       # On CI, just log the version we're using
@@ -45,73 +45,73 @@ platform :ios do
         UI.important("⚠️  Local Xcode version may differ from CI: #{ex}")
       end
     end
-    
+
     UI.message("Using Xcode: #{sh("xcode-select -p").strip}")
     UI.message("Xcode version: #{sh("xcodebuild -version | head -1").strip}")
-    
+
     # Clean build environment on CI for consistent builds
     if is_ci
       UI.message("🧹 Cleaning derived data for fresh CI build...")
       clear_derived_data
     end
   end
-  
+
   # Helper method to detect if running in CI environment
   def is_ci
     ENV['CI'] == 'true' || ENV['CIRCLECI'] == 'true'
   end
-  
+
   # Validate build environment before running lanes
   def validate_build_environment
     UI.message("🔍 Validating build environment...")
-    
+
     # Check available iOS SDKs
     begin
       ios_sdks = sh("xcodebuild -showsdks | grep -E 'iphoneos[0-9]' | awk '{print $NF}'", log: false).split("\n").reject(&:empty?)
       UI.message("Available iOS SDKs: #{ios_sdks.join(', ')}")
-      
+
       if ios_sdks.empty?
         UI.error("❌ No iOS SDKs found!")
         raise "No iOS SDKs available"
       end
-      
+
       # Use the latest available iOS SDK
       latest_sdk = ios_sdks.last
       UI.message("Using latest iOS SDK: #{latest_sdk}")
-      
+
     rescue => e
       UI.error("Error checking iOS SDKs: #{e}")
       UI.important("Continuing with default SDK...")
     end
-    
+
     # Check available simulators (with fallback)
     begin
       available_simulators = sh("xcrun simctl list devices | grep -E 'iPhone [0-9]' | sed 's/.*iPhone /iPhone /' | sed 's/ (.*//' | sort -u", log: false).split("\n").reject(&:empty?)
       UI.message("Available iPhone simulators: #{available_simulators.join(', ')}")
-      
+
       # Find best available iPhone simulator
       preferred_devices = ["iPhone 15", "iPhone 14", "iPhone 13", "iPhone 12", "iPhone 11"]
       selected_device = preferred_devices.find { |device| available_simulators.any? { |sim| sim.include?(device) } }
-      
+
       if selected_device
         UI.message("✅ Using simulator: #{selected_device}")
       else
         UI.important("⚠️  No preferred simulators found. Available: #{available_simulators.join(', ')}")
         UI.important("Will use default simulator")
       end
-      
+
     rescue => e
       UI.error("Error checking simulators: #{e}")
       UI.important("Continuing with default simulator...")
     end
-    
+
     UI.success("✅ Build environment validation complete")
   end
 
   desc "Runs all the tests"
   lane :test do
     validate_build_environment
-    
+
     scan(
       scheme: "Game",
       devices: ['iPhone 14'],
@@ -124,10 +124,10 @@ platform :ios do
   desc "Ad-hoc build"
   lane :adhoc do
     validate_build_environment
-    
+
     # Use fastlane match for ad-hoc certificates and provisioning profiles
     match(type: "adhoc", readonly: true)
-    
+
     # Build for ad-hoc distribution
     gym(
       scheme: "Game",
@@ -141,19 +141,19 @@ platform :ios do
   desc "Submit a new Beta Build to Apple TestFlight"
   lane :beta do
     validate_build_environment
-    
+
     UI.message("🚀 Starting TestFlight build process...")
-    
+
     # Check authentication method - prefer App Store Connect API key
     use_api_key = !ENV['APP_STORE_CONNECT_API_KEY_ID'].nil? && !ENV['APP_STORE_CONNECT_API_KEY_ID'].empty?
-    
+
     if use_api_key
       UI.message("🔑 Using App Store Connect API Key authentication (bypasses 2FA)")
-      
+
       # Validate required environment variables for API key
       required_env_vars = ['APP_STORE_CONNECT_API_KEY_ID', 'APP_STORE_CONNECT_API_ISSUER_ID', 'APP_STORE_CONNECT_API_KEY_CONTENT', 'APPLE_TEAM_ID']
       missing_vars = required_env_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
-      
+
       if !missing_vars.empty?
         UI.error("❌ Missing required environment variables for API Key: #{missing_vars.join(', ')}")
         UI.error("Please set these variables in CircleCI project settings:")
@@ -163,19 +163,19 @@ platform :ios do
         UI.error("- APPLE_TEAM_ID: Your Apple Developer Team ID")
         raise "Missing required environment variables: #{missing_vars.join(', ')}"
       end
-      
+
       # Setup App Store Connect API Key
       UI.message("🔍 Debugging API Key setup...")
       UI.message("Key ID length: #{ENV['APP_STORE_CONNECT_API_KEY_ID']&.length || 0}")
       UI.message("Issuer ID length: #{ENV['APP_STORE_CONNECT_API_ISSUER_ID']&.length || 0}")
       UI.message("Key content length: #{ENV['APP_STORE_CONNECT_API_KEY_CONTENT']&.length || 0}")
-      
+
       # Validate key content format
       if ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
         decoded_key = Base64.decode64(ENV['APP_STORE_CONNECT_API_KEY_CONTENT'])
         UI.message("Decoded key starts with: #{decoded_key[0..20]}...")
         UI.message("Decoded key ends with: ...#{decoded_key[-20..-1]}")
-        
+
         if decoded_key.include?('BEGIN PRIVATE KEY') && decoded_key.include?('END PRIVATE KEY')
           UI.message("✅ Key content appears to be valid P8 format")
         else
@@ -183,25 +183,25 @@ platform :ios do
           UI.error("Expected: -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----")
         end
       end
-      
+
       app_store_connect_api_key(
         key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
         issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
         key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'],
         is_key_content_base64: true
       )
-      
+
       UI.message("Using API Key ID: #{ENV['APP_STORE_CONNECT_API_KEY_ID']}")
       UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
       UI.message("App Identifier: com.circleci.ios-game-demo")
-      
+
     else
       UI.message("🔐 Using Apple ID authentication (requires app-specific password)")
-      
+
       # Validate required environment variables for Apple ID
       required_env_vars = ['FASTLANE_USER', 'FASTLANE_PASSWORD', 'APPLE_TEAM_ID']
       missing_vars = required_env_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
-      
+
       if !missing_vars.empty?
         UI.error("❌ Missing required environment variables: #{missing_vars.join(', ')}")
         UI.error("Please set these variables in CircleCI project settings:")
@@ -211,17 +211,17 @@ platform :ios do
         UI.error("")
         UI.error("💡 For easier CI/CD without 2FA, consider using App Store Connect API Key instead:")
         UI.error("- APP_STORE_CONNECT_API_KEY_ID")
-        UI.error("- APP_STORE_CONNECT_API_ISSUER_ID") 
+        UI.error("- APP_STORE_CONNECT_API_ISSUER_ID")
         UI.error("- APP_STORE_CONNECT_API_KEY_CONTENT")
         raise "Missing required environment variables: #{missing_vars.join(', ')}"
       end
-      
+
       # Debug credentials (without exposing password)
       UI.message("Using Apple ID: #{ENV['FASTLANE_USER']}")
       UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
       UI.message("App Identifier: com.circleci.ios-game-demo")
       UI.message("✅ Password is configured (length: #{ENV['FASTLANE_PASSWORD'].length})")
-      
+
       # Debug password format (check for asterisks)
       password = ENV['FASTLANE_PASSWORD']
       if password&.include?('*')
@@ -231,11 +231,11 @@ platform :ios do
         UI.message("🔍 Password format check: #{password[0]}...#{password[-1]} (first and last chars)")
       end
     end
-    
+
     UI.message("🔧 Will override project team ID with: #{ENV['APPLE_TEAM_ID']}")
-    
+
     UI.message("📱 Fetching latest TestFlight build number...")
-    
+
     # Get the latest TestFlight build number with authentication
     begin
       if use_api_key
@@ -268,22 +268,22 @@ platform :ios do
       UI.important("Continuing with build number 1...")
       latest_build = 0
     end
-    
+
     # Increment build number
     new_build_number = latest_build + 1
     UI.message("Setting new build number to: #{new_build_number}")
-    
+
     increment_build_number(
       build_number: new_build_number
     )
-    
+
     UI.message("🔐 Setting up certificates and provisioning profiles with fastlane match...")
-    
+
     # Use fastlane match for App Store certificates and provisioning profiles
     match(type: "appstore", readonly: true)
-    
+
     UI.message("🔨 Building the app...")
-    
+
     # Build the app for App Store distribution
     gym(
       scheme: "Game",
@@ -302,9 +302,9 @@ platform :ios do
       destination: "generic/platform=iOS",
       xcargs: "CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='match AppStore com.circleci.ios-game-demo' DEVELOPMENT_TEAM=#{ENV['APPLE_TEAM_ID']}"
     )
-    
+
     UI.message("📤 Uploading to TestFlight...")
-    
+
     # Upload to TestFlight with authentication
     if use_api_key
       pilot(
@@ -322,55 +322,335 @@ platform :ios do
         changelog: "Build #{new_build_number} - Automated CI/CD build"
       )
     end
-    
+
     UI.message("🏷️ Tagging release...")
-    
+
     # Tag the release in git
     add_git_tag(
       tag: "v#{get_version_number}-#{new_build_number}"
     )
-    
+
     UI.success("✅ Beta build complete! Build #{new_build_number} uploaded to TestFlight")
   end
-  
+
+  desc "Validate app configuration for App Store submission"
+  lane :validate_app do
+    validate_build_environment
+
+    UI.message("🔍 Running comprehensive app validation...")
+
+    # 1. Validate App Icons
+    UI.message("📱 Validating app icons...")
+    validate_app_icons
+
+    # 2. Validate Info.plist
+    UI.message("📄 Validating Info.plist configuration...")
+    validate_info_plist
+
+    # 3. Validate API Key (if configured)
+    UI.message("🔑 Validating authentication configuration...")
+    validate_authentication
+
+    # 4. Validate Bundle Identifier
+    UI.message("📦 Validating bundle identifier...")
+    validate_bundle_identifier
+
+    UI.success("✅ All validations passed! App is ready for App Store submission.")
+  end
+
+  # Helper method to validate app icons
+  def validate_app_icons
+    app_icon_path = "./Game/Assets.xcassets/AppIcon.appiconset"
+    contents_json = "#{app_icon_path}/Contents.json"
+
+    # Check if AppIcon.appiconset exists
+    unless File.directory?(app_icon_path)
+      UI.user_error!("❌ AppIcon.appiconset directory not found at #{app_icon_path}")
+    end
+
+    # Check if Contents.json exists
+    unless File.exist?(contents_json)
+      UI.user_error!("❌ Contents.json not found in AppIcon.appiconset")
+    end
+
+    # Parse Contents.json
+    begin
+      contents = JSON.parse(File.read(contents_json))
+      images = contents["images"] || []
+    rescue JSON::ParserError => e
+      UI.user_error!("❌ Invalid JSON in Contents.json: #{e.message}")
+    end
+
+    # Required icon sizes for iPhone apps
+    required_sizes = [
+      { size: "29x29", scale: "2x", expected_pixels: 58 },   # Settings @2x
+      { size: "29x29", scale: "3x", expected_pixels: 87 },   # Settings @3x
+      { size: "40x40", scale: "2x", expected_pixels: 80 },   # Spotlight @2x
+      { size: "40x40", scale: "3x", expected_pixels: 120 },  # Spotlight @3x (required 120x120!)
+      { size: "60x60", scale: "2x", expected_pixels: 120 },  # App icon @2x
+      { size: "60x60", scale: "3x", expected_pixels: 180 },  # App icon @3x
+      { size: "1024x1024", scale: "1x", expected_pixels: 1024 } # App Store marketing
+    ]
+
+    missing_sizes = []
+    invalid_files = []
+
+    required_sizes.each do |req|
+      # Find matching entry in Contents.json
+      matching_image = images.find do |img|
+        img["size"] == req[:size] && img["scale"] == req[:scale]
+      end
+
+      if matching_image.nil?
+        missing_sizes << "#{req[:size]} @#{req[:scale]}"
+        next
+      end
+
+      # Check if file exists
+      filename = matching_image["filename"]
+      if filename.nil? || filename.empty?
+        missing_sizes << "#{req[:size]} @#{req[:scale]} (no filename specified)"
+        next
+      end
+
+      file_path = "#{app_icon_path}/#{filename}"
+      unless File.exist?(file_path)
+        invalid_files << "#{filename} (referenced but file missing)"
+        next
+      end
+
+      # Validate file format and dimensions
+      begin
+        file_info = `file "#{file_path}"`.strip
+        sips_info = `sips -g pixelWidth -g pixelHeight "#{file_path}" 2>/dev/null`.strip
+
+        # Check for alpha channel (should be RGB, not RGBA)
+        if file_info.include?("RGBA") || file_info.include?("with alpha")
+          invalid_files << "#{filename} (contains alpha channel - not allowed for App Store)"
+        end
+
+        # Extract dimensions
+        width_match = sips_info.match(/pixelWidth: (\d+)/)
+        height_match = sips_info.match(/pixelHeight: (\d+)/)
+
+        if width_match && height_match
+          width = width_match[1].to_i
+          height = height_match[1].to_i
+          expected = req[:expected_pixels]
+
+          if width != expected || height != expected
+            invalid_files << "#{filename} (#{width}x#{height}, expected #{expected}x#{expected})"
+          else
+            UI.message("  ✅ #{filename} (#{width}x#{height}) - Valid")
+          end
+        end
+
+      rescue => e
+        invalid_files << "#{filename} (validation error: #{e.message})"
+      end
+    end
+
+    # Report results
+    unless missing_sizes.empty?
+      UI.error("❌ Missing required app icon sizes:")
+      missing_sizes.each { |size| UI.error("  - #{size}") }
+    end
+
+    unless invalid_files.empty?
+      UI.error("❌ Invalid app icon files:")
+      invalid_files.each { |file| UI.error("  - #{file}") }
+    end
+
+    if !missing_sizes.empty? || !invalid_files.empty?
+      UI.user_error!("❌ App icon validation failed. Please fix the issues above.")
+    end
+
+    UI.success("✅ All app icons are valid")
+  end
+
+  # Helper method to validate Info.plist
+  def validate_info_plist
+    info_plist_path = "./Game/Info.plist"
+
+    unless File.exist?(info_plist_path)
+      UI.user_error!("❌ Info.plist not found at #{info_plist_path}")
+    end
+
+    # Read and parse Info.plist
+    begin
+      plist_content = `plutil -convert json -o - "#{info_plist_path}" 2>/dev/null`
+      plist = JSON.parse(plist_content)
+    rescue => e
+      UI.user_error!("❌ Failed to parse Info.plist: #{e.message}")
+    end
+
+    # Required keys for App Store submission
+    required_keys = {
+      "CFBundleIconName" => "App icon name (required for iOS 11+)",
+      "CFBundleIdentifier" => "Bundle identifier",
+      "CFBundleVersion" => "Build version",
+      "CFBundleShortVersionString" => "Marketing version",
+      "CFBundleExecutable" => "Executable name"
+    }
+
+    missing_keys = []
+
+    required_keys.each do |key, description|
+      value = plist[key]
+      if value.nil? || (value.is_a?(String) && value.strip.empty?)
+        missing_keys << "#{key} (#{description})"
+      else
+        UI.message("  ✅ #{key}: #{value}")
+      end
+    end
+
+    unless missing_keys.empty?
+      UI.error("❌ Missing required Info.plist keys:")
+      missing_keys.each { |key| UI.error("  - #{key}") }
+      UI.user_error!("❌ Info.plist validation failed")
+    end
+
+    # Validate CFBundleIconName matches AppIcon
+    icon_name = plist["CFBundleIconName"]
+    if icon_name != "AppIcon"
+      UI.important("⚠️  CFBundleIconName is '#{icon_name}', expected 'AppIcon'")
+    end
+
+    UI.success("✅ Info.plist is valid")
+  end
+
+  # Helper method to validate authentication
+  def validate_authentication
+    has_api_key = !ENV['APP_STORE_CONNECT_API_KEY_ID'].nil? && !ENV['APP_STORE_CONNECT_API_KEY_ID'].empty?
+    has_apple_id = !ENV['FASTLANE_USER'].nil? && !ENV['FASTLANE_USER'].empty?
+
+    if has_api_key
+      UI.message("🔑 App Store Connect API Key authentication detected")
+
+      # Validate API key configuration
+      required_vars = ['APP_STORE_CONNECT_API_KEY_ID', 'APP_STORE_CONNECT_API_ISSUER_ID', 'APP_STORE_CONNECT_API_KEY_CONTENT', 'APPLE_TEAM_ID']
+      missing_vars = required_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
+
+      unless missing_vars.empty?
+        UI.user_error!("❌ Missing API Key environment variables: #{missing_vars.join(', ')}")
+      end
+
+      # Validate formats
+      key_id = ENV['APP_STORE_CONNECT_API_KEY_ID']
+      issuer_id = ENV['APP_STORE_CONNECT_API_ISSUER_ID']
+      key_content = ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
+
+      if key_id.length != 10
+        UI.user_error!("❌ APP_STORE_CONNECT_API_KEY_ID should be 10 characters, got #{key_id.length}")
+      end
+
+      if issuer_id.length != 36 || !issuer_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+        UI.user_error!("❌ APP_STORE_CONNECT_API_ISSUER_ID should be a UUID (36 chars), got #{issuer_id.length} chars")
+      end
+
+      if key_content.length < 100
+        UI.user_error!("❌ APP_STORE_CONNECT_API_KEY_CONTENT seems too short (#{key_content.length} chars)")
+      end
+
+      # Test key content format
+      begin
+        decoded_key = Base64.decode64(key_content)
+        unless decoded_key.include?('BEGIN PRIVATE KEY') && decoded_key.include?('END PRIVATE KEY')
+          UI.user_error!("❌ APP_STORE_CONNECT_API_KEY_CONTENT doesn't contain valid P8 key format")
+        end
+      rescue => e
+        UI.user_error!("❌ APP_STORE_CONNECT_API_KEY_CONTENT is not valid base64: #{e.message}")
+      end
+
+      UI.success("✅ API Key configuration is valid")
+
+    elsif has_apple_id
+      UI.message("🔐 Apple ID authentication detected")
+      UI.important("⚠️  Consider switching to App Store Connect API Key to avoid 2FA issues")
+
+      required_vars = ['FASTLANE_USER', 'FASTLANE_PASSWORD', 'APPLE_TEAM_ID']
+      missing_vars = required_vars.select { |var| ENV[var].nil? || ENV[var].empty? }
+
+      unless missing_vars.empty?
+        UI.user_error!("❌ Missing Apple ID environment variables: #{missing_vars.join(', ')}")
+      end
+
+      UI.success("✅ Apple ID configuration is valid")
+
+    else
+      UI.user_error!("❌ No authentication method configured. Set either API Key or Apple ID credentials.")
+    end
+  end
+
+  # Helper method to validate bundle identifier
+  def validate_bundle_identifier
+    expected_bundle_id = "com.circleci.ios-game-demo"
+
+    # Check Appfile
+    appfile_path = "./fastlane/Appfile"
+    if File.exist?(appfile_path)
+      appfile_content = File.read(appfile_path)
+      if appfile_content.include?(expected_bundle_id)
+        UI.message("  ✅ Appfile contains correct bundle identifier")
+      else
+        UI.error("❌ Appfile doesn't contain expected bundle identifier: #{expected_bundle_id}")
+      end
+    end
+
+    # Check Info.plist (if it uses the variable, that's fine)
+    info_plist_path = "./Game/Info.plist"
+    if File.exist?(info_plist_path)
+      plist_content = File.read(info_plist_path)
+      if plist_content.include?("$(PRODUCT_BUNDLE_IDENTIFIER)")
+        UI.message("  ✅ Info.plist uses PRODUCT_BUNDLE_IDENTIFIER variable")
+      elsif plist_content.include?(expected_bundle_id)
+        UI.message("  ✅ Info.plist contains correct bundle identifier")
+      else
+        UI.important("⚠️  Info.plist bundle identifier should be verified")
+      end
+    end
+
+    UI.success("✅ Bundle identifier configuration looks good")
+  end
+
   desc "Test Apple ID authentication"
   lane :test_auth do
     validate_build_environment
-    
+
     # Check authentication method - prefer App Store Connect API key
     use_api_key = !ENV['APP_STORE_CONNECT_API_KEY_ID'].nil? && !ENV['APP_STORE_CONNECT_API_KEY_ID'].empty?
-    
+
     if use_api_key
       UI.message("Testing App Store Connect API Key authentication...")
       UI.message("API Key ID: #{ENV['APP_STORE_CONNECT_API_KEY_ID']}")
       UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
-      
+
       # Setup App Store Connect API Key with debugging
       UI.message("🔍 Debugging API Key setup...")
       UI.message("Key ID length: #{ENV['APP_STORE_CONNECT_API_KEY_ID']&.length || 0}")
       UI.message("Issuer ID length: #{ENV['APP_STORE_CONNECT_API_ISSUER_ID']&.length || 0}")
       UI.message("Key content length: #{ENV['APP_STORE_CONNECT_API_KEY_CONTENT']&.length || 0}")
-      
+
       # Validate key content format
       if ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
         decoded_key = Base64.decode64(ENV['APP_STORE_CONNECT_API_KEY_CONTENT'])
         UI.message("Decoded key starts with: #{decoded_key[0..20]}...")
         UI.message("Decoded key ends with: ...#{decoded_key[-20..-1]}")
-        
+
         if decoded_key.include?('BEGIN PRIVATE KEY') && decoded_key.include?('END PRIVATE KEY')
           UI.message("✅ Key content appears to be valid P8 format")
         else
           UI.error("❌ Key content doesn't appear to be valid P8 format")
         end
       end
-      
+
       app_store_connect_api_key(
         key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
         issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
         key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'],
         is_key_content_base64: true
       )
-      
+
       begin
         latest_build = latest_testflight_build_number(
           team_id: ENV['APPLE_TEAM_ID'],
@@ -390,7 +670,7 @@ platform :ios do
       UI.message("Testing Apple ID authentication...")
       UI.message("Username: #{ENV['FASTLANE_USER']}")
       UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
-      
+
       begin
         latest_build = latest_testflight_build_number(
           username: ENV['FASTLANE_USER'],
