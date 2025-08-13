@@ -165,6 +165,25 @@ platform :ios do
       end
       
       # Setup App Store Connect API Key
+      UI.message("🔍 Debugging API Key setup...")
+      UI.message("Key ID length: #{ENV['APP_STORE_CONNECT_API_KEY_ID']&.length || 0}")
+      UI.message("Issuer ID length: #{ENV['APP_STORE_CONNECT_API_ISSUER_ID']&.length || 0}")
+      UI.message("Key content length: #{ENV['APP_STORE_CONNECT_API_KEY_CONTENT']&.length || 0}")
+      
+      # Validate key content format
+      if ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
+        decoded_key = Base64.decode64(ENV['APP_STORE_CONNECT_API_KEY_CONTENT'])
+        UI.message("Decoded key starts with: #{decoded_key[0..20]}...")
+        UI.message("Decoded key ends with: ...#{decoded_key[-20..-1]}")
+        
+        if decoded_key.include?('BEGIN PRIVATE KEY') && decoded_key.include?('END PRIVATE KEY')
+          UI.message("✅ Key content appears to be valid P8 format")
+        else
+          UI.error("❌ Key content doesn't appear to be valid P8 format")
+          UI.error("Expected: -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----")
+        end
+      end
+      
       app_store_connect_api_key(
         key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
         issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
@@ -326,7 +345,25 @@ platform :ios do
       UI.message("API Key ID: #{ENV['APP_STORE_CONNECT_API_KEY_ID']}")
       UI.message("Team ID: #{ENV['APPLE_TEAM_ID']}")
       
-      # Setup App Store Connect API Key
+      # Setup App Store Connect API Key with debugging
+      UI.message("🔍 Debugging API Key setup...")
+      UI.message("Key ID length: #{ENV['APP_STORE_CONNECT_API_KEY_ID']&.length || 0}")
+      UI.message("Issuer ID length: #{ENV['APP_STORE_CONNECT_API_ISSUER_ID']&.length || 0}")
+      UI.message("Key content length: #{ENV['APP_STORE_CONNECT_API_KEY_CONTENT']&.length || 0}")
+      
+      # Validate key content format
+      if ENV['APP_STORE_CONNECT_API_KEY_CONTENT']
+        decoded_key = Base64.decode64(ENV['APP_STORE_CONNECT_API_KEY_CONTENT'])
+        UI.message("Decoded key starts with: #{decoded_key[0..20]}...")
+        UI.message("Decoded key ends with: ...#{decoded_key[-20..-1]}")
+        
+        if decoded_key.include?('BEGIN PRIVATE KEY') && decoded_key.include?('END PRIVATE KEY')
+          UI.message("✅ Key content appears to be valid P8 format")
+        else
+          UI.error("❌ Key content doesn't appear to be valid P8 format")
+        end
+      end
+      
       app_store_connect_api_key(
         key_id: ENV['APP_STORE_CONNECT_API_KEY_ID'],
         issuer_id: ENV['APP_STORE_CONNECT_API_ISSUER_ID'],
