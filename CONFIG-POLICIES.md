@@ -4,13 +4,13 @@ This document explains how to implement and manage CircleCI Config Policies for 
 
 ## 🎯 **Why Config Policies > Workflow Approvals**
 
-| Feature | Workflow Approvals | Config Policies |
-|---------|-------------------|-----------------|
-| **Prevention** | Workflow starts, then waits | **Workflow blocked completely** |
-| **Security** | Can be bypassed | **Cannot be bypassed** |
-| **Granularity** | Limited control | **Fine-grained rules** |
-| **Enforcement** | Manual intervention | **Automated policy engine** |
-| **Scalability** | Per-workflow setup | **Organization-wide** |
+| Feature         | Workflow Approvals          | Config Policies                 |
+| --------------- | --------------------------- | ------------------------------- |
+| **Prevention**  | Workflow starts, then waits | **Workflow blocked completely** |
+| **Security**    | Can be bypassed             | **Cannot be bypassed**          |
+| **Granularity** | Limited control             | **Fine-grained rules**          |
+| **Enforcement** | Manual intervention         | **Automated policy engine**     |
+| **Scalability** | Per-workflow setup          | **Organization-wide**           |
 
 ## 🔧 **Implementation Steps**
 
