@@ -4,12 +4,29 @@ This project implements several security measures to protect against malicious c
 
 ## 🔒 CircleCI Security Configuration
 
-### Workflow Approval Process
+### Config Policies (Primary Security Layer)
+
+**🛡️ Automated Policy Enforcement:**
+- CircleCI Config Policies **prevent workflows from starting** on policy violations
+- Policies are written in Rego (Open Policy Agent) and enforced organization-wide
+- **Much stronger** than workflow approvals - cannot be bypassed
+- See `CONFIG-POLICIES.md` for detailed implementation guide
+
+**🚫 External Contributor Blocking:**
+- All PRs from external contributors are **automatically blocked** by policy
+- Requires explicit maintainer approval via pipeline parameter
+- Protects against malicious code execution before any CI starts
+
+**✅ Trusted User Fast-Track:**
+- Main branch and trusted team members bypass policy restrictions
+- Maintains development velocity for internal team
+
+### Workflow Approval Process (Backup Layer)
 
 **For External Contributors (Non-main branches):**
 - All PRs from external contributors require manual approval before CircleCI workflows execute
 - An approval step (`hold-for-approval`) blocks execution until a maintainer approves
-- This prevents malicious code from running with access to secrets or infrastructure
+- This provides additional protection if policies are misconfigured
 
 **For Trusted Main Branch:**
 - Main branch bypasses approval for faster development
