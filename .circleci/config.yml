@@ -18,18 +18,7 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
-      - run:
-          name: Debug iOS SDK Environment
-          command: |
-            echo "=== Xcode Version ==="
-            xcodebuild -version
-            echo "=== Available iOS SDKs ==="
-            xcodebuild -showsdks | grep -i ios
-            echo "=== Available Simulators ==="
-            xcrun simctl list devices --json | jq -r '.devices | to_entries[] | select(.key | contains("iOS")) | "\(.key): \(.value | map(.name) | join(", "))"' || echo "jq not available, using basic list:"
-            xcrun simctl list devices | grep -E "(iOS|iPhone)"
-            echo "=== Project Build Settings ==="
-            xcodebuild -showBuildSettings -project Game.xcodeproj -scheme Game | grep -E "(SDKROOT|IPHONEOS_DEPLOYMENT_TARGET|SDK)" | head -10
+
       - run:
           name: Ruby and Bundle Setup
           command: |
@@ -102,11 +91,7 @@ jobs:
             zip -r $ZIP_NAME . -i ./build
             echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
-      - run:
-          name: Debug directory structure
-          command: |
-            ls -la
-            ls -la output || echo "No output directory"
+
       - aws-s3/copy:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
@@ -116,93 +101,16 @@ jobs:
           root: .
           paths:
             - output
-      # Debug Slack configuration
-      - run:
-          name: Debug Slack Configuration
-          command: |
-            echo "Debugging Slack notification setup..."
-            echo "SLACK_ACCESS_TOKEN set: ${SLACK_ACCESS_TOKEN:+Yes}"
-            echo "SLACK_WEBHOOK set: ${SLACK_WEBHOOK:+Yes}"
-            echo "Current branch: ${CIRCLE_BRANCH}"
-            echo "Build status will determine which notification triggers"
-            if [ -z "${SLACK_ACCESS_TOKEN}" ] && [ -z "${SLACK_WEBHOOK}" ]; then
-              echo "Neither SLACK_ACCESS_TOKEN nor SLACK_WEBHOOK is set!"
-              echo "Please set one of these in CircleCI project environment variables"
-            fi
-          when: always
+
       # Slack notifications
       - slack/notify:
           channel: fe-workout
           event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*iOS Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Commit"
-                      },
-                      "url": "https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/commit/${CIRCLE_SHA1}"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_fail_1
       - slack/notify:
           channel: fe-workout
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*iOS Build Successful* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Build & Test\n*Triggered by:* <@${CIRCLE_USERNAME}>"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "Download Artifacts"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}/artifacts"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: success_tagged_deploy_1
 
   adhoc:
     macos:
@@ -276,67 +184,11 @@ jobs:
       - slack/notify:
           channel: fe-workout
           event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*iOS Ad-hoc Build Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_fail_1
       - slack/notify:
           channel: fe-workout
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*iOS Ad-hoc Build Ready* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Ad-hoc Distribution\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nYour .ipa file is ready for distribution!"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "Download IPA"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}/artifacts"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: success_tagged_deploy_1
 
   beta:
     macos:
@@ -445,83 +297,11 @@ jobs:
       - slack/notify:
           channel: fe-workout
           event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*TestFlight Deployment Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* Beta TestFlight\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nThe iOS app failed to deploy to TestFlight"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build Logs"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Commit"
-                      },
-                      "url": "https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/commit/${CIRCLE_SHA1}"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_fail_1
       - slack/notify:
           channel: fe-workout
           event: pass
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*TestFlight Deployment Successful!* \n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Branch:* `${CIRCLE_BRANCH}`\n*Version:* ${APP_VERSION}\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nYour iOS app is now available on TestFlight!"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "Open TestFlight"
-                      },
-                      "url": "https://appstoreconnect.apple.com/apps"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Build"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    },
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "Download IPA"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}/artifacts"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: success_tagged_deploy_1
 
   validate:
     macos:
@@ -572,31 +352,7 @@ jobs:
       - slack/notify:
           channel: fe-workout
           event: fail
-          custom: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*App Validation Failed* on `${CIRCLE_BRANCH}` branch\n\n*Project:* ${CIRCLE_PROJECT_REPONAME}\n*Job:* App Validation\n*Triggered by:* <@${CIRCLE_USERNAME}>\n\nCheck the logs for validation errors (app icons, Info.plist, API keys, etc.)"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Validation Logs"
-                      },
-                      "url": "${CIRCLE_BUILD_URL}"
-                    }
-                  ]
-                }
-              ]
-            }
+          template: basic_fail_1
 
 workflows:
   build-test-adhoc:
