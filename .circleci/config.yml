@@ -356,6 +356,7 @@ jobs:
           template: basic_fail_1
 
 workflows:
+  # Main branch workflow (trusted, no approval needed)
   build-test-adhoc:
     when:
       not: << pipeline.parameters.no-testflight >>
@@ -363,19 +364,11 @@ workflows:
       - validate:
           filters:
             branches:
-              only:
-                - main
-                - /dev-.*/
+              only: main
       - build-and-test:
           filters:
             branches:
               only: main
-          requires:
-            - validate
-      - adhoc:
-          filters:
-            branches:
-              only: /dev-.*/
           requires:
             - validate
       - beta:
@@ -385,27 +378,67 @@ workflows:
           requires:
             - build-and-test
 
+  # PR/external contributor workflow (requires approval)
+  build-test-adhoc-with-approval:
+    when:
+      not: << pipeline.parameters.no-testflight >>
+    jobs:
+      - hold-for-approval:
+          type: approval
+          filters:
+            branches:
+              ignore: main
+      - validate:
+          name: validate-with-approval
+          filters:
+            branches:
+              ignore: main
+          requires:
+            - hold-for-approval
+      - adhoc:
+          filters:
+            branches:
+              ignore: main
+          requires:
+            - validate-with-approval
+
+  # No-testflight main branch workflow
   build-test-no-deploy:
     when: << pipeline.parameters.no-testflight >>
     jobs:
       - validate:
           filters:
             branches:
-              only:
-                - main
-                - /dev-.*/
+              only: main
       - build-and-test:
           filters:
             branches:
               only: main
           requires:
             - validate
+
+  # No-testflight PR workflow (requires approval)
+  build-test-no-deploy-with-approval:
+    when: << pipeline.parameters.no-testflight >>
+    jobs:
+      - hold-for-approval:
+          type: approval
+          filters:
+            branches:
+              ignore: main
+      - validate:
+          name: validate-no-deploy-with-approval
+          filters:
+            branches:
+              ignore: main
+          requires:
+            - hold-for-approval
       - adhoc:
           filters:
             branches:
-              only: /dev-.*/
+              ignore: main
           requires:
-            - validate
+            - validate-no-deploy-with-approval
 
   weekly-build:
     triggers:
