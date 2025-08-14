@@ -5,6 +5,12 @@ orbs:
   aws-cli: circleci/aws-cli@5.4.0
   slack: circleci/slack@4.14.0
 
+parameters:
+  no-testflight:
+    type: boolean
+    default: false
+    description: "Skip TestFlight deployment when set to true"
+
 jobs:
   build-and-test:
     macos:
@@ -91,7 +97,7 @@ jobs:
             zip -r $ZIP_NAME . -i ./build
             echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
-
+      # CircleCI linter incorrectly complains about aws-s3/copy required auth
       - aws-s3/copy:
           from: ${ZIP_NAME}
           to: s3://${S3_BUCKET_NAME}/builds/
@@ -199,12 +205,6 @@ jobs:
     environment:
       FL_OUTPUT_DIR: output
       FASTLANE_LANE: beta
-      # App Store Connect API Key authentication (bypasses 2FA)
-      # Set these environment variables in CircleCI project settings:
-      # - APP_STORE_CONNECT_API_KEY_ID: Your API Key ID from App Store Connect
-      # - APP_STORE_CONNECT_API_ISSUER_ID: Your Issuer ID from App Store Connect
-      # - APP_STORE_CONNECT_API_KEY_CONTENT: Base64 encoded content of your .p8 key file
-      # - APPLE_TEAM_ID: Your Apple Developer Team ID
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
@@ -280,6 +280,7 @@ jobs:
             echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
             APP_VERSION=$(agvtool what-marketing-version -terse1)
             echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${APP_VERSION}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
+      # CircleCI linter incorrectly complains about aws-s3/copy required auth
       - aws-s3/copy:
           from: build_info.json
           to: s3://${S3_BUCKET_NAME}/releases/build_info.json
@@ -356,6 +357,8 @@ jobs:
 
 workflows:
   build-test-adhoc:
+    when:
+      not: << pipeline.parameters.no-testflight >>
     jobs:
       - validate:
           filters:
@@ -379,5 +382,43 @@ workflows:
           filters:
             branches:
               only: main
+          requires:
+            - build-and-test
+
+  build-test-no-deploy:
+    when: << pipeline.parameters.no-testflight >>
+    jobs:
+      - validate:
+          filters:
+            branches:
+              only:
+                - main
+                - /dev-.*/
+      - build-and-test:
+          filters:
+            branches:
+              only: main
+          requires:
+            - validate
+      - adhoc:
+          filters:
+            branches:
+              only: /dev-.*/
+          requires:
+            - validate
+
+  weekly-build:
+    triggers:
+      - schedule:
+          cron: "0 19 * * 5"  # 3pm EST on Fridays (19:00 UTC during EST)
+          filters:
+            branches:
+              only: main
+    jobs:
+      - validate
+      - build-and-test:
+          requires:
+            - validate
+      - beta:
           requires:
             - build-and-test
