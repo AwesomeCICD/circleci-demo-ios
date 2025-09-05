@@ -119,9 +119,9 @@ jobs:
           template: success_tagged_deploy_1
 
   adhoc:
-    macos:
-      xcode: "16.3.0"
-    resource_class: m4pro.medium
+    machine: true
+    resource_class: awesomecicd/local-mac
+
     working_directory: /Users/distiller/project
     # default fastlane environment locations
     environment:
