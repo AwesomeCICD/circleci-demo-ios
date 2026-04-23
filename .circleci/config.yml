@@ -68,7 +68,7 @@ jobs:
       - run:
           name: Upload mini-app artifacts to S3
           command: |
-            BUILD_PATH="miniapp-artifacts/${CIRCLE_BUILD_NUM}"
+            BUILD_PATH="builds/miniapp-artifacts/${CIRCLE_BUILD_NUM}"
             for artifact in *-miniapp.tar.gz; do
               echo "Uploading ${artifact}..."
               aws s3 cp "${artifact}" "s3://${S3_BUCKET_NAME}/${BUILD_PATH}/${artifact}"
