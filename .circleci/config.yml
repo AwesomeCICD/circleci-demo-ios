@@ -372,6 +372,77 @@ jobs:
           event: pass
           template: success_tagged_deploy_1
 
+  build-native-shell:
+    macos:
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
+    working_directory: /Users/distiller/project
+    environment:
+      FL_OUTPUT_DIR: output
+      FASTLANE_LANE: test
+    shell: /bin/bash --login -o pipefail
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Assemble React Native mini-app artifacts
+          command: |
+            echo "Mini-app artifacts received from Stage 1:"
+            ls -lh *-miniapp.tar.gz
+            mkdir -p rn-bundles
+            for artifact in *-miniapp.tar.gz; do
+              echo "Extracting ${artifact}..."
+              tar -xzf "${artifact}" -C rn-bundles/
+            done
+            echo "Assembled bundles:"
+            find rn-bundles/ -type f
+      - run:
+          name: Ruby and Bundle Setup
+          command: |
+            ruby --version
+            gem --version
+            bundle --version
+
+            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
+            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
+
+            gem install bundler -v '>= 2.4.0' --no-document || true
+            rm -rf vendor/bundle .bundle Gemfile.lock || true
+
+            bundle config set --local path 'vendor/bundle'
+            bundle config set --local deployment 'false'
+            bundle config set --local platform 'x86_64-darwin-24'
+            bundle config set --local without 'development test'
+
+            bundle lock --add-platform x86_64-darwin-24
+            bundle install --jobs 4 --retry 3 --verbose
+      - run:
+          name: Force Compatible iOS SDK
+          command: |
+            LATEST_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+            if [ ! -z "$LATEST_SDK" ]; then
+              echo "export IPHONEOS_DEPLOYMENT_TARGET=14.0" >> $BASH_ENV
+              echo "export SDKROOT=$LATEST_SDK" >> $BASH_ENV
+            fi
+      - run:
+          name: Build and test native shell
+          command: |
+            bundle update fastlane
+            bundle exec fastlane $FASTLANE_LANE
+      - store_artifacts:
+          path: output
+      - store_test_results:
+          path: output/scan
+      - persist_to_workspace:
+          root: .
+          paths:
+            - output
+      - slack/notify:
+          channel: fe-workout
+          event: fail
+          template: basic_fail_1
+
   validate:
     macos:
       xcode: "16.3.0"
@@ -383,6 +454,14 @@ jobs:
     shell: /bin/bash --login -o pipefail
     steps:
       - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Verify mini-app artifacts from Stage 1
+          command: |
+            echo "Checking mini-app artifacts received from Linux stage..."
+            ls -lh *-miniapp.tar.gz
+            echo "Artifact verification complete."
       - run:
           name: Ruby and Bundle Setup
           command: |
@@ -439,3 +518,10 @@ workflows:
           requires:
             - "Build RN Mini-App: Payments"
             - "Build RN Mini-App: Transfers"
+      # Stage 2: Native Shell (macOS)
+      - validate:
+          requires:
+            - upload-artifacts
+      - build-native-shell:
+          requires:
+            - validate
