@@ -1,0 +1,14 @@
+{
+  "name": "payments-miniapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "bundle:ios": "react-native bundle --platform ios --dev false --entry-file index.js --bundle-output dist/ios/main.jsbundle --assets-dest dist/ios/assets",
+    "bundle:android": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output dist/android/index.android.bundle --assets-dest dist/android/res"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.73.6",
+    "@react-native/metro-config": "0.73.5"
+  }
+}

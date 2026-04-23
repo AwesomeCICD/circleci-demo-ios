@@ -12,6 +12,74 @@ parameters:
     description: "Skip TestFlight deployment when set to true"
 
 jobs:
+  build-rn-miniapp:
+    parameters:
+      miniapp_name:
+        type: string
+      miniapp_path:
+        type: string
+    docker:
+      - image: cimg/node:18.20
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            cd << parameters.miniapp_path >>
+            npm install
+      - run:
+          name: Bundle React Native (iOS)
+          command: |
+            cd << parameters.miniapp_path >>
+            mkdir -p dist/ios/assets
+            npx react-native bundle \
+              --platform ios \
+              --dev false \
+              --entry-file index.js \
+              --bundle-output dist/ios/main.jsbundle \
+              --assets-dest dist/ios/assets
+      - run:
+          name: Package artifact
+          command: |
+            tar -czf << parameters.miniapp_name >>-miniapp.tar.gz \
+              -C << parameters.miniapp_path >> dist/
+      - store_artifacts:
+          path: << parameters.miniapp_name >>-miniapp.tar.gz
+      - persist_to_workspace:
+          root: .
+          paths:
+            - << parameters.miniapp_name >>-miniapp.tar.gz
+      - slack/notify:
+          channel: fe-workout
+          event: fail
+          template: basic_fail_1
+
+  upload-artifacts:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - aws-cli/setup:
+          role_arn: ${AWS_ROLE_ARN}
+          region: ${AWS_REGION}
+      - run:
+          name: Upload mini-app artifacts to S3
+          command: |
+            BUILD_PATH="miniapp-artifacts/${CIRCLE_BUILD_NUM}"
+            for artifact in *-miniapp.tar.gz; do
+              echo "Uploading ${artifact}..."
+              aws s3 cp "${artifact}" "s3://${S3_BUCKET_NAME}/${BUILD_PATH}/${artifact}"
+            done
+            echo "All artifacts uploaded to s3://${S3_BUCKET_NAME}/${BUILD_PATH}/"
+      - store_artifacts:
+          path: payments-miniapp.tar.gz
+      - store_artifacts:
+          path: transfers-miniapp.tar.gz
+
+
   build-and-test:
     macos:
       xcode: "16.4.0"
@@ -356,69 +424,18 @@ jobs:
           template: basic_fail_1
 
 workflows:
-  build-test-adhoc:
-    when:
-      not: << pipeline.parameters.no-testflight >>
+  bcp-mobile-pipeline:
     jobs:
-      - validate:
-          filters:
-            branches:
-              only:
-                - main
-                - /dev-.*/
-      - build-and-test:
-          filters:
-            branches:
-              only: main
+      # Stage 1: React Native Mini-Apps (parallel, Linux)
+      - build-rn-miniapp:
+          name: "Build RN Mini-App: Payments"
+          miniapp_name: payments
+          miniapp_path: miniapps/payments
+      - build-rn-miniapp:
+          name: "Build RN Mini-App: Transfers"
+          miniapp_name: transfers
+          miniapp_path: miniapps/transfers
+      - upload-artifacts:
           requires:
-            - validate
-      - adhoc:
-          filters:
-            branches:
-              only: /dev-.*/
-          requires:
-            - validate
-      - beta:
-          filters:
-            branches:
-              only: main
-          requires:
-            - build-and-test
-
-  build-test-no-deploy:
-    when: << pipeline.parameters.no-testflight >>
-    jobs:
-      - validate:
-          filters:
-            branches:
-              only:
-                - main
-                - /dev-.*/
-      - build-and-test:
-          filters:
-            branches:
-              only: main
-          requires:
-            - validate
-      - adhoc:
-          filters:
-            branches:
-              only: /dev-.*/
-          requires:
-            - validate
-
-  weekly-build:
-    triggers:
-      - schedule:
-          cron: "0 19 * * 5" # 3pm EST on Fridays (19:00 UTC during EST)
-          filters:
-            branches:
-              only: main
-    jobs:
-      - validate
-      - build-and-test:
-          requires:
-            - validate
-      - beta:
-          requires:
-            - build-and-test
+            - "Build RN Mini-App: Payments"
+            - "Build RN Mini-App: Transfers"
