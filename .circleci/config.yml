@@ -18,9 +18,6 @@ jobs:
         type: string
       miniapp_path:
         type: string
-      platform:
-        type: string
-        default: ios
     docker:
       - image: cimg/node:18.20
     resource_class: medium
@@ -32,27 +29,27 @@ jobs:
             cd << parameters.miniapp_path >>
             npm install
       - run:
-          name: Bundle React Native (<< parameters.platform >>)
+          name: Bundle React Native (iOS)
           command: |
             cd << parameters.miniapp_path >>
-            mkdir -p dist/<< parameters.platform >>/assets
+            mkdir -p dist/ios/assets
             npx react-native bundle \
-              --platform << parameters.platform >> \
+              --platform ios \
               --dev false \
               --entry-file index.js \
-              --bundle-output dist/<< parameters.platform >>/main.bundle \
-              --assets-dest dist/<< parameters.platform >>/assets
+              --bundle-output dist/ios/main.jsbundle \
+              --assets-dest dist/ios/assets
       - run:
           name: Package artifact
           command: |
-            tar -czf << parameters.miniapp_name >>-<< parameters.platform >>-miniapp.tar.gz \
+            tar -czf << parameters.miniapp_name >>-miniapp.tar.gz \
               -C << parameters.miniapp_path >> dist/
       - store_artifacts:
-          path: << parameters.miniapp_name >>-<< parameters.platform >>-miniapp.tar.gz
+          path: << parameters.miniapp_name >>-miniapp.tar.gz
       - persist_to_workspace:
           root: .
           paths:
-            - << parameters.miniapp_name >>-<< parameters.platform >>-miniapp.tar.gz
+            - << parameters.miniapp_name >>-miniapp.tar.gz
       - slack/notify:
           channel: fe-workout
           event: fail
@@ -78,13 +75,9 @@ jobs:
             done
             echo "All artifacts uploaded to s3://${S3_BUCKET_NAME}/${BUILD_PATH}/"
       - store_artifacts:
-          path: payments-ios-miniapp.tar.gz
+          path: payments-miniapp.tar.gz
       - store_artifacts:
-          path: transfers-ios-miniapp.tar.gz
-      - store_artifacts:
-          path: payments-android-miniapp.tar.gz
-      - store_artifacts:
-          path: transfers-android-miniapp.tar.gz
+          path: transfers-miniapp.tar.gz
 
 
   build-and-test:
@@ -666,99 +659,32 @@ jobs:
           event: fail
           template: basic_fail_1
 
-  build-android-shell:
-    docker:
-      - image: cimg/android:2024.01
-    resource_class: large
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - run:
-          name: Assemble React Native mini-app artifacts (Android)
-          command: |
-            echo "Mini-app artifacts received from Stage 1:"
-            ls -lh *-android-miniapp.tar.gz
-            mkdir -p rn-bundles/android
-            for artifact in *-android-miniapp.tar.gz; do
-              echo "Extracting ${artifact}..."
-              tar -xzf "${artifact}" -C rn-bundles/android/
-            done
-            echo "Assembled Android bundles:"
-            find rn-bundles/android/ -type f
-      - run:
-          name: Gradle assembleRelease
-          command: |
-            echo "Starting Android native shell build..."
-            echo ""
-            echo "> Task :app:preBuild"
-            echo "> Task :app:preReleaseBuild"
-            echo "> Task :app:compileReleaseKotlin"
-            echo "> Task :app:compileReleaseJavaWithJavac"
-            echo "> Task :app:mergeReleaseAssets"
-            echo "> Task :app:processReleaseResources"
-            echo "> Task :app:packageRelease"
-            echo "> Task :app:assembleRelease"
-            echo ""
-            echo "BUILD SUCCESSFUL in 3m 12s"
-            echo "28 actionable tasks: 28 executed"
-            mkdir -p output
-            echo "BCP-Mobile-Release-${CIRCLE_BUILD_NUM}.apk" > output/app-release.apk
-      - store_artifacts:
-          path: output
-      - persist_to_workspace:
-          root: .
-          paths:
-            - output
-      - slack/notify:
-          channel: fe-workout
-          event: fail
-          template: basic_fail_1
-
 workflows:
   bcp-mobile-pipeline:
     jobs:
       # Stage 1: React Native Mini-Apps (parallel, Linux)
       - build-rn-miniapp:
-          name: "Build RN Mini-App: Payments (iOS)"
+          name: "Build RN Mini-App: Payments"
           miniapp_name: payments
           miniapp_path: miniapps/payments
-          platform: ios
       - build-rn-miniapp:
-          name: "Build RN Mini-App: Transfers (iOS)"
+          name: "Build RN Mini-App: Transfers"
           miniapp_name: transfers
           miniapp_path: miniapps/transfers
-          platform: ios
-      - build-rn-miniapp:
-          name: "Build RN Mini-App: Payments (Android)"
-          miniapp_name: payments
-          miniapp_path: miniapps/payments
-          platform: android
-      - build-rn-miniapp:
-          name: "Build RN Mini-App: Transfers (Android)"
-          miniapp_name: transfers
-          miniapp_path: miniapps/transfers
-          platform: android
       - upload-artifacts:
           requires:
-            - "Build RN Mini-App: Payments (iOS)"
-            - "Build RN Mini-App: Transfers (iOS)"
-            - "Build RN Mini-App: Payments (Android)"
-            - "Build RN Mini-App: Transfers (Android)"
-      # Stage 2: Native Shell (parallel — iOS macOS + Android Linux)
+            - "Build RN Mini-App: Payments"
+            - "Build RN Mini-App: Transfers"
+      # Stage 2: Native Shell (macOS)
       - validate:
           requires:
             - upload-artifacts
       - build-native-shell:
           requires:
             - validate
-      - build-android-shell:
-          requires:
-            - upload-artifacts
       - security-scans:
           requires:
             - build-native-shell
-            - build-android-shell
       - deploy-testflight:
           requires:
             - security-scans
