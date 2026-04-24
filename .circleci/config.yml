@@ -502,7 +502,7 @@ jobs:
       - app-distribution/upload_ios:
           path: output/Game.ipa
       - app-distribution/notify_slack:
-          slack_webhook_url: $SLACK_WEBHOOK_URL
+          channel: fe-workout
       - run:
           name: Create build info JSON
           command: |
