@@ -384,10 +384,9 @@ jobs:
           at: .
       - snyk/scan:
           project: bcp-mobile-miniapps
-          working-directory: miniapps/payments
           fail-on-issues: false
           monitor-on-build: false
-          additional-arguments: --all-projects
+          additional-arguments: --all-projects miniapps/payments
       - run:
           name: SonarQube - Static code analysis
           command: |
