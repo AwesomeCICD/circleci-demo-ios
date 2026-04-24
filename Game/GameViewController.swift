@@ -40,12 +40,13 @@ class GameViewController: UIViewController {
 
         let divider = UIView()
         divider.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        divider.translatesAutoresizingMaskIntoConstraints = false
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
 
         let buildText = manifest.map { "Build #\($0.build)  ·  Branch: \($0.branch)" } ?? "Build: local"
         let buildLabel = UILabel()
         buildLabel.text = buildText
-        buildLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        buildLabel.font = UIFont(name: "Menlo-Regular", size: 12) ?? UIFont.systemFont(ofSize: 12)
         buildLabel.textColor = UIColor.white.withAlphaComponent(0.5)
         buildLabel.textAlignment = .center
 
@@ -67,16 +68,21 @@ class GameViewController: UIViewController {
         statusLabel.textAlignment = .center
 
         let stack = UIStackView(arrangedSubviews: [
-            headerLabel, subtitleLabel, divider, buildLabel, sectionLabel, moduleStack, statusLabel
+            headerLabel,
+            subtitleLabel,
+            spacer(20),
+            divider,
+            spacer(12),
+            buildLabel,
+            spacer(16),
+            sectionLabel,
+            spacer(4),
+            moduleStack,
+            spacer(20),
+            statusLabel
         ])
         stack.axis = .vertical
-        stack.spacing = 16
-        stack.setCustomSpacing(4, after: headerLabel)
-        stack.setCustomSpacing(24, after: subtitleLabel)
-        stack.setCustomSpacing(24, after: divider)
-        stack.setCustomSpacing(24, after: buildLabel)
-        stack.setCustomSpacing(12, after: sectionLabel)
-        stack.setCustomSpacing(32, after: moduleStack)
+        stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(stack)
@@ -85,6 +91,12 @@ class GameViewController: UIViewController {
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
         ])
+    }
+
+    private func spacer(_ height: CGFloat) -> UIView {
+        let v = UIView()
+        v.heightAnchor.constraint(equalToConstant: height).isActive = true
+        return v
     }
 
     private func moduleCard(for module: MiniAppModule) -> UIView {
@@ -97,7 +109,8 @@ class GameViewController: UIViewController {
 
         let sizeText = module.size > 0 ? String(format: "%.1f KB", Double(module.size) / 1024.0) : "—"
         let sizeLabel = makeLabel(sizeText, size: 13, weight: .regular, alpha: 0.7)
-        sizeLabel.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        sizeLabel.font = UIFont(name: "Menlo-Regular", size: 13) ?? UIFont.systemFont(ofSize: 13)
+        sizeLabel.textColor = UIColor.white.withAlphaComponent(0.7)
         sizeLabel.textAlignment = .right
 
         let checkmark = makeLabel("✓", size: 17, weight: .bold, alpha: 1.0)
