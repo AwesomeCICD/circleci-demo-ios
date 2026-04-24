@@ -538,13 +538,29 @@ jobs:
           command: |
             echo "Mini-app artifacts received from Stage 1:"
             ls -lh *-miniapp.tar.gz
-            mkdir -p rn-bundles
-            for artifact in *-miniapp.tar.gz; do
-              echo "Extracting ${artifact}..."
-              tar -xzf "${artifact}" -C rn-bundles/
-            done
+            mkdir -p rn-bundles/payments rn-bundles/transfers
+            tar -xzf payments-miniapp.tar.gz -C rn-bundles/payments/
+            tar -xzf transfers-miniapp.tar.gz -C rn-bundles/transfers/
             echo "Assembled bundles:"
             find rn-bundles/ -type f
+      - run:
+          name: Generate bundle manifest
+          command: |
+            BUNDLED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            PAYMENTS_SIZE=$(stat -f%z rn-bundles/payments/dist/ios/main.jsbundle 2>/dev/null || echo 0)
+            TRANSFERS_SIZE=$(stat -f%z rn-bundles/transfers/dist/ios/main.jsbundle 2>/dev/null || echo 0)
+            jq -n \
+              --arg build "${CIRCLE_BUILD_NUM}" \
+              --arg branch "${CIRCLE_BRANCH}" \
+              --argjson payments_size ${PAYMENTS_SIZE} \
+              --argjson transfers_size ${TRANSFERS_SIZE} \
+              --arg bundled_at "${BUNDLED_AT}" \
+              '{build:$build,branch:$branch,modules:[
+                {name:"payments",platform:"ios",size:$payments_size,bundledAt:$bundled_at},
+                {name:"transfers",platform:"ios",size:$transfers_size,bundledAt:$bundled_at}
+              ]}' > Game/bundle_manifest.json
+            echo "Generated bundle_manifest.json:"
+            cat Game/bundle_manifest.json
       - run:
           name: Ruby and Bundle Setup
           command: |

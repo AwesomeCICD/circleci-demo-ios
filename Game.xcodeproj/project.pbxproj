@@ -17,6 +17,7 @@
 		49EC45581BF4D533000A8470 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 49EC45561BF4D533000A8470 /* LaunchScreen.storyboard */; };
 		49EC45631BF4D533000A8470 /* GameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49EC45621BF4D533000A8470 /* GameTests.swift */; };
 		49EC456E1BF4D533000A8470 /* GameUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49EC456D1BF4D533000A8470 /* GameUITests.swift */; };
+		BC00A0011BF4D532000A8470 /* bundle_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = BC00A0001BF4D532000A8470 /* bundle_manifest.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +48,7 @@
 		49EC45541BF4D533000A8470 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		49EC45571BF4D533000A8470 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		49EC45591BF4D533000A8470 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BC00A0001BF4D532000A8470 /* bundle_manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = bundle_manifest.json; sourceTree = "<group>"; };
 		49EC455E1BF4D533000A8470 /* GameTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49EC45621BF4D533000A8470 /* GameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameTests.swift; sourceTree = "<group>"; };
 		49EC45641BF4D533000A8470 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				49EC45541BF4D533000A8470 /* Assets.xcassets */,
 				49EC45561BF4D533000A8470 /* LaunchScreen.storyboard */,
 				49EC45591BF4D533000A8470 /* Info.plist */,
+				BC00A0001BF4D532000A8470 /* bundle_manifest.json */,
 			);
 			path = Game;
 			sourceTree = "<group>";
@@ -251,6 +254,7 @@
 				49EC45581BF4D533000A8470 /* LaunchScreen.storyboard in Resources */,
 				49EC45551BF4D533000A8470 /* Assets.xcassets in Resources */,
 				49EC45531BF4D533000A8470 /* Main.storyboard in Resources */,
+				BC00A0011BF4D532000A8470 /* bundle_manifest.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

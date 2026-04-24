@@ -34,7 +34,9 @@ Attaches workspace, authenticates to AWS via OIDC, and uploads all mini-app arti
 Attaches workspace, verifies mini-app artifacts from Stage 1, runs Fastlane validation lane.
 
 **`build-native-shell`**
-Attaches workspace, extracts RN bundles, runs Fastlane test lane to build the native iOS shell app.
+Attaches workspace, extracts each RN bundle into its own subdirectory (`rn-bundles/payments/`, `rn-bundles/transfers/`), generates a `bundle_manifest.json` with real bundle sizes and CI build metadata, copies it into the Xcode project so the app can read it at runtime, then runs Fastlane test lane to build the native iOS shell.
+
+The native shell is a UIKit app (`GameViewController.swift`) that reads `bundle_manifest.json` from the main bundle at launch and displays which React Native mini-app modules were assembled into this build — the build number, branch, each module name, platform, and bundle size in KB.
 
 **`security-scans`**
 Real Snyk dependency scan against `miniapps/payments` via the `snyk/snyk` orb. SonarQube analysis (simulated).

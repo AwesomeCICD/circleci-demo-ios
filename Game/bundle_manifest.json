@@ -1,0 +1,8 @@
+{
+  "build": "local",
+  "branch": "local",
+  "modules": [
+    {"name": "payments", "platform": "ios", "size": 0, "bundledAt": ""},
+    {"name": "transfers", "platform": "ios", "size": 0, "bundledAt": ""}
+  ]
+}
