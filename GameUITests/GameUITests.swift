@@ -30,17 +30,16 @@ class GameUITests: XCTestCase {
         super.tearDown()
     }
     
-    func testExample() {
-        // Use recording to get started writing UI tests.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    func testBankingShellLoads() {
         snapshot("0_Launch")
         let app = XCUIApplication()
 
-        // Check the string displayed on the label is existing
-        XCTAssertTrue(app.otherElements["myLabel"].exists)
+        XCTAssertTrue(app.staticTexts["BCP Mobile"].exists)
+        XCTAssertTrue(app.staticTexts["Payments"].exists)
+        XCTAssertTrue(app.staticTexts["Transfers"].exists)
+        XCTAssertTrue(app.staticTexts["● All modules loaded"].exists)
 
-        app.tap()
-        snapshot("1_Tap")
+        snapshot("1_ModulesLoaded")
     }
     
 }
