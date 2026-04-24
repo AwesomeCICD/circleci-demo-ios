@@ -4,6 +4,7 @@ orbs:
   aws-s3: circleci/aws-s3@4.1.1
   aws-cli: circleci/aws-cli@5.4.0
   slack: circleci/slack@4.14.0
+  app-distribution: tadashi0713/app-distribution@1.2.0
 
 parameters:
   no-testflight:
@@ -498,6 +499,10 @@ jobs:
             bundle exec fastlane $FASTLANE_LANE
       - store_artifacts:
           path: output/Game.ipa
+      - app-distribution/upload_ios:
+          path: output/Game.ipa
+      - app-distribution/notify_slack:
+          slack_webhook_url: $SLACK_WEBHOOK_URL
       - run:
           name: Create build info JSON
           command: |
