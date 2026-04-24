@@ -11,29 +11,6 @@ parameters:
     default: false
     description: "Skip TestFlight deployment when set to true"
 
-commands:
-  load-vault-credentials:
-    steps:
-      - run:
-          name: Install Vault agent
-          command: |
-            vault -h && exit 0 || echo "Installing Vault..."
-            cd /tmp
-            wget -q https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip
-            unzip vault_1.12.2_linux_amd64.zip
-            sudo mv vault /usr/local/bin
-      - run:
-          name: Load secrets from Vault via OIDC
-          command: |
-            export VAULT_ADDR="https://vault.namer.circleci-fieldeng.com"
-            export VAULT_ROLE="cba-dev-deploy"
-            echo $CIRCLE_OIDC_TOKEN > .circleci/vault/token.json
-            circleci env subst < .circleci/vault/agent.hcl.tpl > .circleci/vault/agent.hcl
-            vault agent -config=.circleci/vault/agent.hcl
-      - run:
-          name: Export Vault secrets to environment
-          command: source .circleci/vault/setenv
-
 jobs:
   build-rn-miniapp:
     parameters:
@@ -401,7 +378,8 @@ jobs:
     resource_class: medium
     steps:
       - checkout
-      - load-vault-credentials
+      - attach_workspace:
+          at: .
       - run:
           name: Snyk - Dependency vulnerability scan
           command: |
@@ -684,5 +662,29 @@ jobs:
 workflows:
   bcp-mobile-pipeline:
     jobs:
+      # Stage 1: React Native Mini-Apps (parallel, Linux)
+      - build-rn-miniapp:
+          name: "Build RN Mini-App: Payments"
+          miniapp_name: payments
+          miniapp_path: miniapps/payments
+      - build-rn-miniapp:
+          name: "Build RN Mini-App: Transfers"
+          miniapp_name: transfers
+          miniapp_path: miniapps/transfers
+      - upload-artifacts:
+          requires:
+            - "Build RN Mini-App: Payments"
+            - "Build RN Mini-App: Transfers"
+      # Stage 2: Native Shell (macOS)
+      - validate:
+          requires:
+            - upload-artifacts
+      - build-native-shell:
+          requires:
+            - validate
       - security-scans:
-          context: [cera-vault-oidc]
+          requires:
+            - build-native-shell
+      - deploy-testflight:
+          requires:
+            - security-scans
