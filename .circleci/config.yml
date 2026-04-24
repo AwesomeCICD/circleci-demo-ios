@@ -5,6 +5,7 @@ orbs:
   aws-cli: circleci/aws-cli@5.4.0
   slack: circleci/slack@4.14.0
   app-distribution: tadashi0713/app-distribution@1.2.0
+  snyk: snyk/snyk@2.3.0
 
 parameters:
   no-testflight:
@@ -381,24 +382,12 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - run:
-          name: Snyk - Dependency vulnerability scan
-          command: |
-            echo "Running Snyk vulnerability scan..."
-            echo "Scanning mini-app dependencies..."
-            echo ""
-            echo "Testing miniapps/payments..."
-            echo "  ✓ 579 dependencies scanned"
-            echo "  ✓ 7 moderate vulnerabilities found (below threshold)"
-            echo "  ✓ No critical or high severity issues"
-            echo ""
-            echo "Testing miniapps/transfers..."
-            echo "  ✓ 579 dependencies scanned"
-            echo "  ✓ 7 moderate vulnerabilities found (below threshold)"
-            echo "  ✓ No critical or high severity issues"
-            echo ""
-            echo "Snyk scan complete. Results saved to snyk-report.json"
-            echo '{"vulnerabilities":[],"ok":true,"dependencyCount":579}' > snyk-report.json
+      - snyk/scan:
+          project: bcp-mobile-miniapps
+          working-directory: miniapps/payments
+          fail-on-issues: false
+          monitor-on-build: false
+          additional-arguments: --all-projects
       - run:
           name: SonarQube - Static code analysis
           command: |
@@ -420,8 +409,6 @@ jobs:
             echo ""
             echo "SonarQube analysis complete."
             echo '{"status":"OK","qualityGate":"PASSED"}' > sonar-report.json
-      - store_artifacts:
-          path: snyk-report.json
       - store_artifacts:
           path: sonar-report.json
       - slack/notify:
