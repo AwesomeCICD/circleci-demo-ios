@@ -380,6 +380,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
+      - load-vault-credentials
       - run:
           name: Snyk - Dependency vulnerability scan
           command: |
@@ -427,6 +428,29 @@ jobs:
           channel: fe-workout
           event: fail
           template: basic_fail_1
+
+commands:
+  load-vault-credentials:
+    steps:
+      - run:
+          name: Install Vault agent
+          command: |
+            vault -h && exit 0 || echo "Installing Vault..."
+            cd /tmp
+            wget -q https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip
+            unzip vault_1.12.2_linux_amd64.zip
+            sudo mv vault /usr/local/bin
+      - run:
+          name: Load secrets from Vault via OIDC
+          command: |
+            export VAULT_ADDR="https://vault.namer.circleci-fieldeng.com"
+            export VAULT_ROLE="bcp-mobile-demo"
+            echo $CIRCLE_OIDC_TOKEN > .circleci/vault/token.json
+            circleci env subst < .circleci/vault/agent.hcl.tpl > .circleci/vault/agent.hcl
+            vault agent -config=.circleci/vault/agent.hcl
+      - run:
+          name: Export Vault secrets to environment
+          command: source .circleci/vault/setenv
 
   deploy-testflight:
     macos:
@@ -683,6 +707,7 @@ workflows:
           requires:
             - validate
       - security-scans:
+          context: [cera-vault-oidc]
           requires:
             - build-native-shell
       - deploy-testflight:
