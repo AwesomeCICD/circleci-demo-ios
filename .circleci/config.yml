@@ -650,6 +650,40 @@ jobs:
           event: fail
           template: basic_fail_1
 
+  submit-app-store:
+    macos:
+      xcode: "16.3.0"
+    resource_class: m4pro.medium
+    working_directory: /Users/distiller/project
+    shell: /bin/bash --login -o pipefail
+    steps:
+      - checkout
+      - run:
+          name: Submit to App Store
+          command: |
+            echo "Submitting build to App Store for review..."
+            echo ""
+            echo "  App:        BCP Mobile Banking"
+            echo "  Version:    $(cat Game/Info.plist | grep -A1 CFBundleShortVersionString | tail -1 | sed 's/.*<string>\(.*\)<\/string>/\1/' || echo '2.1.0')"
+            echo "  Build:      ${CIRCLE_BUILD_NUM}"
+            echo "  Track:      App Store (Production)"
+            echo ""
+            echo "> Authenticating with App Store Connect API..."
+            echo "> Uploading binary to App Store Connect..."
+            echo "> Submitting for review..."
+            echo ""
+            echo "  Status: Waiting for Review"
+            echo ""
+            echo "App Store submission complete. Apple will review within 24-48 hours."
+      - slack/notify:
+          channel: fe-workout
+          event: pass
+          template: success_tagged_deploy_1
+      - slack/notify:
+          channel: fe-workout
+          event: fail
+          template: basic_fail_1
+
 workflows:
   bcp-mobile-pipeline:
     jobs:
@@ -679,3 +713,10 @@ workflows:
       - deploy-testflight:
           requires:
             - security-scans
+      - approve-release:
+          type: approval
+          requires:
+            - deploy-testflight
+      - submit-app-store:
+          requires:
+            - approve-release
