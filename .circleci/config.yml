@@ -26,7 +26,7 @@ commands:
           name: Load secrets from Vault via OIDC
           command: |
             export VAULT_ADDR="https://vault.namer.circleci-fieldeng.com"
-            export VAULT_ROLE="bcp-mobile-demo"
+            export VAULT_ROLE="cba-dev-deploy"
             echo $CIRCLE_OIDC_TOKEN > .circleci/vault/token.json
             circleci env subst < .circleci/vault/agent.hcl.tpl > .circleci/vault/agent.hcl
             vault agent -config=.circleci/vault/agent.hcl
@@ -401,8 +401,6 @@ jobs:
     resource_class: medium
     steps:
       - checkout
-      - attach_workspace:
-          at: .
       - load-vault-credentials
       - run:
           name: Snyk - Dependency vulnerability scan
@@ -686,30 +684,5 @@ jobs:
 workflows:
   bcp-mobile-pipeline:
     jobs:
-      # Stage 1: React Native Mini-Apps (parallel, Linux)
-      - build-rn-miniapp:
-          name: "Build RN Mini-App: Payments"
-          miniapp_name: payments
-          miniapp_path: miniapps/payments
-      - build-rn-miniapp:
-          name: "Build RN Mini-App: Transfers"
-          miniapp_name: transfers
-          miniapp_path: miniapps/transfers
-      - upload-artifacts:
-          requires:
-            - "Build RN Mini-App: Payments"
-            - "Build RN Mini-App: Transfers"
-      # Stage 2: Native Shell (macOS)
-      - validate:
-          requires:
-            - upload-artifacts
-      - build-native-shell:
-          requires:
-            - validate
       - security-scans:
           context: [cera-vault-oidc]
-          requires:
-            - build-native-shell
-      - deploy-testflight:
-          requires:
-            - security-scans
