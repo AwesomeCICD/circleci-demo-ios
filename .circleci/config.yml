@@ -46,6 +46,9 @@ jobs:
             swift test --enable-xctest --disable-swift-testing --xunit-output test-results/store-updater.xml
       - store_test_results:
           path: test-results
+      - store_artifacts:
+          path: test-results
+          destination: test-results
       - run:
           name: "Build universal binary (Apple Silicon + Intel, one executor)"
           command: bash scripts/build_universal.sh
