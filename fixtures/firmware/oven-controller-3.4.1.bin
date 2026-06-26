@@ -1,0 +1,5 @@
+; Mastrena II controller image (demo stand-in, not real firmware)
+; version 3.4.1
+PRESET brew_temp=200F
+PRESET steam_cycle=enabled
+PRESET recipe_slots=24

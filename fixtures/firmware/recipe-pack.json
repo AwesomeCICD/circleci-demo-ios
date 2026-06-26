@@ -1,0 +1,8 @@
+{
+  "schema": "starbucks.recipe-pack/v1",
+  "season": "summer-2026",
+  "drinks": [
+    { "id": "lavender-oatmilk-latte", "steam": true, "shots": 2 },
+    { "id": "brown-sugar-shaken-espresso", "steam": false, "shots": 3 }
+  ]
+}

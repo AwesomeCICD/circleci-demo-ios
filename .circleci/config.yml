@@ -1,133 +1,86 @@
 version: 2.1
 
+# Starbucks in-store device update pipeline.
+#
+# Builds a NATIVE macOS utility, packages it as a signed + notarized .dmg, blocks
+# the release if notarization was skipped, then tags the release back to GitHub
+# and publishes the artifact. One Apple Silicon executor produces a universal
+# (arm64 + x86_64) binary for the whole store fleet.
+
 orbs:
-  aws-s3: circleci/aws-s3@4.1.1
   aws-cli: circleci/aws-cli@5.4.0
-  slack: circleci/slack@4.14.0
 
 parameters:
-  no-testflight:
+  skip-notarization:
     type: boolean
     default: false
-    description: "Skip TestFlight deployment when set to true"
+    description: >-
+      DEMO TOGGLE. When true, the build bypasses Apple notarization — reproducing
+      the change that shipped a broken (un-notarized) build to stores where
+      devices rejected it. The release-gate job then BLOCKS publish.
+  publish-external:
+    type: boolean
+    default: false
+    description: >-
+      When true, also upload the signed .dmg to external artifact storage
+      (S3 / Azure Blob). Off by default so the demo runs anywhere.
 
-jobs:
-  build-and-test:
+executors:
+  macos-m4:
     macos:
       xcode: "16.4.0"
     resource_class: m4pro.medium
-    working_directory: /Users/distiller/project
-    # default fastlane environment locations
-    environment:
-      FL_OUTPUT_DIR: output
-      FASTLANE_LANE: test
-    shell: /bin/bash --login -o pipefail
+
+jobs:
+  build-and-test:
+    executor: macos-m4
     steps:
       - checkout
-
       - run:
-          name: Ruby and Bundle Setup
-          command: |
-            ruby --version
-            gem --version
-            bundle --version
-
-            # Fix Ruby 3.4+ compilation environment for macOS
-            echo "Setting up Ruby environment for macOS compilation..."
-            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
-            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
-
-            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "Updating to modern Bundler..."
-            gem install bundler -v '>= 2.4.0' --no-document || true
-            bundle --version
-
-            # Clean old bundler cache and regenerate
-            rm -rf vendor/bundle .bundle Gemfile.lock || true
-
-            # Configure bundler for macOS platform
-            bundle config set --local path 'vendor/bundle'
-            bundle config set --local deployment 'false'
-            bundle config set --local platform 'x86_64-darwin-24'
-            bundle config set --local without 'development test'
-
-            # Generate new lockfile and install
-            bundle lock --add-platform x86_64-darwin-24
-            bundle install --jobs 4 --retry 3 --verbose
+          name: Toolchain versions
+          command: swift --version && xcodebuild -version
       - run:
-          name: Force Compatible iOS SDK
-          command: |
-            echo "Setting compatible iOS SDK for build..."
-            # Get the latest available iOS SDK
-            LATEST_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
-            echo "Latest available iOS SDK: $LATEST_SDK"
-
-            # Set environment variables to force compatible SDK
-            if [ ! -z "$LATEST_SDK" ]; then
-              echo "export IPHONEOS_DEPLOYMENT_TARGET=14.0" >> $BASH_ENV
-              echo "export SDKROOT=$LATEST_SDK" >> $BASH_ENV
-              echo "Set iOS Deployment Target to 14.0"
-              echo "Set SDK Root to $LATEST_SDK"
-            else
-              echo "No iOS SDK found, using defaults"
-            fi
+          name: "Unit tests — USB image integrity (hash verification)"
+          command: swift test
       - run:
-          name: Fastlane
-          command: |
-            bundle update fastlane
-            bundle exec fastlane $FASTLANE_LANE
+          name: "Build universal binary (Apple Silicon + Intel, one executor)"
+          command: bash scripts/build_universal.sh
+      - run:
+          name: "Assemble .app bundle"
+          command: bash scripts/make_app.sh
+      - run:
+          name: "Package .dmg (the store update image)"
+          command: bash scripts/make_dmg.sh
+      - run:
+          name: "Code sign"
+          command: bash scripts/sign.sh
       - store_artifacts:
-          path: output
-      - store_test_results:
-          path: output/scan
-      - aws-cli/setup:
-          use_brew: true
-          role_arn: ${AWS_ROLE_ARN}
-          region: ${AWS_REGION}
-      - run:
-          name: Zip build artifact for upload
-          # avgtool is Apple's build number management tool
-          # what-marketing-version is a command that retrieves build version like "2.10.2" from Info.plist
-          # terse1 retrieves only the build number, terse includes additional text
-          command: |
-            APP_VERSION=$(agvtool what-marketing-version -terse1)
-            echo $APP_VERSION
-            ZIP_NAME="app-${APP_VERSION}.zip"
-            echo $ZIP_NAME
-            zip -r $ZIP_NAME . -i ./build
-            echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
-            echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
-      # CircleCI linter incorrectly complains about aws-s3/copy required auth
-      - aws-s3/copy:
-          from: ${ZIP_NAME}
-          to: s3://${S3_BUCKET_NAME}/builds/
-          arguments: |
-            --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION}
+          path: dist
       - persist_to_workspace:
           root: .
           paths:
-            - output
+            - dist
 
-      # Slack notifications
-      - slack/notify:
-          channel: fe-workout
-          event: fail
-          template: basic_fail_1
-      - slack/notify:
-          channel: fe-workout
-          event: pass
-          template: success_tagged_deploy_1
+  release-gate:
+    executor: macos-m4
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Notarize the .dmg (or simulate a skip)"
+          command: SKIP_NOTARIZATION="<< pipeline.parameters.skip-notarization >>" bash scripts/notarize_gate.sh
+      - run:
+          name: "RELEASE GATE — block publish unless notarized"
+          command: bash scripts/verify_notarization.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
 
-  adhoc:
-    macos:
-      xcode: "16.3.0"
-    resource_class: m4pro.medium
-    working_directory: /Users/distiller/project
-    # default fastlane environment locations
-    environment:
-      FL_OUTPUT_DIR: output
-      FASTLANE_LANE: adhoc
-    shell: /bin/bash --login -o pipefail
+  publish:
+    docker:
+      - image: cimg/base:current
     steps:
       - checkout
       - attach_workspace:
@@ -136,289 +89,39 @@ jobs:
           fingerprints:
             - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
       - run:
-          name: Set Git User
-          command: |
-            git config --global user.email "fieldeng@circleci.com"
-            git config --global user.name "Field Engineering CI User"
+          name: "Tag the release back to GitHub"
+          command: bash scripts/tag_release.sh
+      - when:
+          condition: << pipeline.parameters.publish-external >>
+          steps:
+            - aws-cli/setup:
+                role_arn: ${AWS_ROLE_ARN}
+                region: ${AWS_REGION}
+            - run:
+                name: "Upload .dmg to external artifact storage (S3 / Azure Blob)"
+                command: bash scripts/publish.sh
       - run:
-          name: Add GitHub to known hosts
-          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Test SSH connection to certificates repository
-          command: |
-            echo "Testing SSH connection to match repository..."
-            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
-            echo "Available SSH keys:"
-            ssh-add -l || echo "No SSH keys found"
-      - run:
-          name: Ruby and Bundle Setup
-          command: |
-            ruby --version
-            gem --version
-            bundle --version
-
-            # Fix Ruby 3.4+ compilation environment for macOS
-            echo "Setting up Ruby environment for macOS compilation..."
-            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
-            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
-
-            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "Updating to modern Bundler..."
-            gem install bundler -v '>= 2.4.0' --no-document || true
-            bundle --version
-
-            # Clean old bundler cache and regenerate
-            rm -rf vendor/bundle .bundle Gemfile.lock || true
-
-            # Configure bundler for macOS platform
-            bundle config set --local path 'vendor/bundle'
-            bundle config set --local deployment 'false'
-            bundle config set --local platform 'x86_64-darwin-24'
-            bundle config set --local without 'development test'
-
-            # Generate new lockfile and install
-            bundle lock --add-platform x86_64-darwin-24
-            bundle install --jobs 4 --retry 3 --verbose
-      - run:
-          name: Fastlane
-          command: |
-            bundle update fastlane
-            bundle exec fastlane $FASTLANE_LANE
+          name: "Publish summary"
+          command: bash scripts/publish_summary.sh
       - store_artifacts:
-          path: output/Game.ipa
-      # Slack notifications
-      - slack/notify:
-          channel: fe-workout
-          event: fail
-          template: basic_fail_1
-      - slack/notify:
-          channel: fe-workout
-          event: pass
-          template: success_tagged_deploy_1
-
-  beta:
-    macos:
-      xcode: "16.3.0"
-    resource_class: m4pro.medium
-    working_directory: /Users/distiller/project
-    # default fastlane environment locations
-    environment:
-      FL_OUTPUT_DIR: output
-      FASTLANE_LANE: beta
-    shell: /bin/bash --login -o pipefail
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
-      - run:
-          name: Set Git User
-          command: |
-            git config --global user.email "fieldeng@circleci.com"
-            git config --global user.name "Field Engineering CI User"
-      - run:
-          name: Add GitHub to known hosts
-          command: ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Test SSH connection to certificates repository
-          command: |
-            echo "Testing SSH connection to match repository..."
-            ssh -T git@github.com || echo "SSH connection test complete (exit code $?)"
-            echo "Available SSH keys:"
-            ssh-add -l || echo "No SSH keys found"
-      - run:
-          name: Ruby and Bundle Setup
-          command: |
-            ruby --version
-            gem --version
-            bundle --version
-
-            # Fix Ruby 3.4+ compilation environment for macOS
-            echo "Setting up Ruby environment for macOS compilation..."
-            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
-            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
-
-            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "Updating to modern Bundler..."
-            gem install bundler -v '>= 2.4.0' --no-document || true
-            bundle --version
-
-            # Clean old bundler cache and regenerate
-            rm -rf vendor/bundle .bundle Gemfile.lock || true
-
-            # Configure bundler for macOS platform
-            bundle config set --local path 'vendor/bundle'
-            bundle config set --local deployment 'false'
-            bundle config set --local platform 'x86_64-darwin-24'
-            bundle config set --local without 'development test'
-
-            # Generate new lockfile and install
-            bundle lock --add-platform x86_64-darwin-24
-            bundle install --jobs 4 --retry 3 --verbose
-      - aws-cli/setup:
-          use_brew: true
-          role_arn: ${AWS_ROLE_ARN}
-          region: ${AWS_REGION}
-      - run:
-          name: Fastlane Testflight
-          command: |
-            bundle update fastlane
-            bundle exec fastlane $FASTLANE_LANE
-      - store_artifacts:
-          path: output/Game.ipa
-      - run:
-          name: Create build info JSON
-          command: |
-            APP_VERSION=$(agvtool what-marketing-version -terse1)
-            echo $APP_VERSION
-            ZIP_NAME="app-${APP_VERSION}.zip"
-            echo $ZIP_NAME
-            zip -r $ZIP_NAME . -i ./build
-            echo "export ZIP_NAME=${ZIP_NAME}" >> $BASH_ENV
-            echo "export APP_VERSION=${APP_VERSION}" >> $BASH_ENV
-            APP_VERSION=$(agvtool what-marketing-version -terse1)
-            echo "{\"version\": \"${APP_VERSION}\", \"build\": \"${APP_VERSION}\", \"date\": \"$(date +"%Y-%m-%d %H:%M:%S")\"}" > build_info.json
-      # CircleCI linter incorrectly complains about aws-s3/copy required auth
-      - aws-s3/copy:
-          from: build_info.json
-          to: s3://${S3_BUCKET_NAME}/releases/build_info.json
-          arguments: |
-            --metadata appVersion=${APP_VERSION},buildNumber=${APP_VERSION},environment=testflight
-      - run:
-          name: Update Amplify app
-          command: |
-            aws amplify update-app \
-              --app-id $AMPLIFY_APP_ID \
-              --platform IOS \
-              --version ${APP_VERSION} \
-              --release-notes "Build ${APP_VERSION} deployed to TestFlight"
-      # Slack notifications
-      - slack/notify:
-          channel: fe-workout
-          event: fail
-          template: basic_fail_1
-      - slack/notify:
-          channel: fe-workout
-          event: pass
-          template: success_tagged_deploy_1
-
-  validate:
-    macos:
-      xcode: "16.3.0"
-    resource_class: m4pro.medium
-    working_directory: /Users/distiller/project
-    environment:
-      FL_OUTPUT_DIR: output
-      FASTLANE_LANE: validate_app
-    shell: /bin/bash --login -o pipefail
-    steps:
-      - checkout
-      - run:
-          name: Ruby and Bundle Setup
-          command: |
-            ruby --version
-            gem --version
-            bundle --version
-
-            # Fix Ruby 3.4+ compilation environment for macOS
-            echo "Setting up Ruby environment for macOS compilation..."
-            export BUNDLE_BUILD__JSON="--with-cflags=-I$(brew --prefix)/include"
-            export BUNDLE_BUILD__NOKOGIRI="--use-system-libraries"
-
-            # Force modern Bundler version (avoid old 1.17.2 compatibility issues)
-            echo "Updating to modern Bundler..."
-            gem install bundler -v '>= 2.4.0' --no-document || true
-            bundle --version
-
-            # Clean old bundler cache and regenerate
-            rm -rf vendor/bundle .bundle Gemfile.lock || true
-
-            # Configure bundler for macOS platform
-            bundle config set --local path 'vendor/bundle'
-            bundle config set --local deployment 'false'
-            bundle config set --local platform 'x86_64-darwin-24'
-            bundle config set --local without 'development test'
-
-            # Generate new lockfile and install
-            bundle lock --add-platform x86_64-darwin-24
-            bundle install --jobs 4 --retry 3 --verbose
-      - run:
-          name: Validate App Configuration
-          command: |
-            echo "Running comprehensive app validation..."
-            bundle exec fastlane $FASTLANE_LANE
-      # Slack notifications for validation failures
-      - slack/notify:
-          channel: fe-workout
-          event: fail
-          template: basic_fail_1
+          path: dist
 
 workflows:
-  build-test-adhoc:
-    when:
-      not: << pipeline.parameters.no-testflight >>
+  store-device-update:
     jobs:
-      - validate:
-          filters:
-            branches:
-              only:
-                - main
-                - /dev-.*/
       - build-and-test:
           filters:
             branches:
-              only: main
-          requires:
-            - validate
-      - adhoc:
-          filters:
-            branches:
-              only: /dev-.*/
-          requires:
-            - validate
-      - beta:
-          filters:
-            branches:
-              only: main
+              only: starbucks
+      - release-gate:
           requires:
             - build-and-test
-
-  build-test-no-deploy:
-    when: << pipeline.parameters.no-testflight >>
-    jobs:
-      - validate:
           filters:
             branches:
-              only:
-                - main
-                - /dev-.*/
-      - build-and-test:
+              only: starbucks
+      - publish:
+          requires:
+            - release-gate
           filters:
             branches:
-              only: main
-          requires:
-            - validate
-      - adhoc:
-          filters:
-            branches:
-              only: /dev-.*/
-          requires:
-            - validate
-
-  weekly-build:
-    triggers:
-      - schedule:
-          cron: "0 19 * * 5" # 3pm EST on Fridays (19:00 UTC during EST)
-          filters:
-            branches:
-              only: main
-    jobs:
-      - validate
-      - build-and-test:
-          requires:
-            - validate
-      - beta:
-          requires:
-            - build-and-test
+              only: starbucks
