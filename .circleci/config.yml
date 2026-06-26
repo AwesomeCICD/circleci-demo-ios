@@ -41,7 +41,11 @@ jobs:
           command: swift --version && xcodebuild -version
       - run:
           name: "Unit tests — USB image integrity (hash verification)"
-          command: swift test
+          command: |
+            mkdir -p test-results
+            swift test --xunit-output test-results/store-updater.xml
+      - store_test_results:
+          path: test-results
       - run:
           name: "Build universal binary (Apple Silicon + Intel, one executor)"
           command: bash scripts/build_universal.sh
