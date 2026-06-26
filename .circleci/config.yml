@@ -44,13 +44,8 @@ jobs:
           command: |
             mkdir -p test-results
             swift test --xunit-output "$PWD/test-results/store-updater.xml"
-            echo "=== test-results contents ==="
-            ls -la test-results || true
       - store_test_results:
           path: test-results
-      - store_artifacts:
-          path: test-results
-          destination: test-results
       - run:
           name: "Build universal binary (Apple Silicon + Intel, one executor)"
           command: bash scripts/build_universal.sh
