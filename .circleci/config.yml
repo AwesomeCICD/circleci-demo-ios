@@ -43,7 +43,7 @@ jobs:
           name: "Unit tests — USB image integrity (hash verification)"
           command: |
             mkdir -p test-results
-            swift test --xunit-output test-results/store-updater.xml
+            swift test --enable-xctest --disable-swift-testing --xunit-output test-results/store-updater.xml
       - store_test_results:
           path: test-results
       - run:
