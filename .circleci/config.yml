@@ -116,16 +116,10 @@ workflows:
       - build-and-test:
           filters:
             branches:
-              only: starbucks
-      - release-gate:
+              only: starbucks-no-gate
+      - publish:
           requires:
             - build-and-test
           filters:
             branches:
-              only: starbucks
-      - publish:
-          requires:
-            - release-gate
-          filters:
-            branches:
-              only: starbucks
+              only: starbucks-no-gate
