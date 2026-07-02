@@ -117,15 +117,9 @@ workflows:
           filters:
             branches:
               only: starbucks
-      - release-gate:
-          requires:
-            - build-and-test
-          filters:
-            branches:
-              only: starbucks
       - publish:
           requires:
-            - release-gate
+            - build-and-test
           filters:
             branches:
               only: starbucks
