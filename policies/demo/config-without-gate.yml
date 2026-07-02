@@ -1,0 +1,125 @@
+version: 2.1
+
+# Starbucks in-store device update pipeline.
+#
+# Builds a NATIVE macOS utility, packages it as a signed + notarized .dmg, blocks
+# the release if notarization was skipped, then tags the release back to GitHub
+# and publishes the artifact. One Apple Silicon executor produces a universal
+# (arm64 + x86_64) binary for the whole store fleet.
+
+orbs:
+  aws-cli: circleci/aws-cli@5.4.0
+
+parameters:
+  skip-notarization:
+    type: boolean
+    default: false
+    description: >-
+      DEMO TOGGLE. When true, the build bypasses Apple notarization — reproducing
+      the change that shipped a broken (un-notarized) build to stores where
+      devices rejected it. The release-gate job then BLOCKS publish.
+  publish-external:
+    type: boolean
+    default: false
+    description: >-
+      When true, also upload the signed .dmg to external artifact storage
+      (S3 / Azure Blob). Off by default so the demo runs anywhere.
+
+executors:
+  macos-m4:
+    macos:
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
+
+jobs:
+  build-and-test:
+    executor: macos-m4
+    steps:
+      - checkout
+      - run:
+          name: Toolchain versions
+          command: swift --version && xcodebuild -version
+      - run:
+          name: "Unit tests — USB image integrity (hash verification)"
+          command: |
+            mkdir -p test-results
+            swift test --xunit-output "$PWD/test-results/store-updater.xml"
+      - store_test_results:
+          path: test-results
+      - run:
+          name: "Build universal binary (Apple Silicon + Intel, one executor)"
+          command: bash scripts/build_universal.sh
+      - run:
+          name: "Assemble .app bundle"
+          command: bash scripts/make_app.sh
+      - run:
+          name: "Package .dmg (the store update image)"
+          command: bash scripts/make_dmg.sh
+      - run:
+          name: "Code sign"
+          command: bash scripts/sign.sh
+      - store_artifacts:
+          path: dist
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  release-gate:
+    executor: macos-m4
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Notarize the .dmg (or simulate a skip)"
+          command: SKIP_NOTARIZATION="<< pipeline.parameters.skip-notarization >>" bash scripts/notarize_gate.sh
+      - run:
+          name: "RELEASE GATE — block publish unless notarized"
+          command: bash scripts/verify_notarization.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  publish:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
+      - run:
+          name: "Tag the release back to GitHub"
+          command: bash scripts/tag_release.sh
+      - when:
+          condition: << pipeline.parameters.publish-external >>
+          steps:
+            - aws-cli/setup:
+                role_arn: ${AWS_ROLE_ARN}
+                region: ${AWS_REGION}
+            - run:
+                name: "Upload .dmg to external artifact storage (S3 / Azure Blob)"
+                command: bash scripts/publish.sh
+      - run:
+          name: "Publish summary"
+          command: bash scripts/publish_summary.sh
+      - store_artifacts:
+          path: dist
+
+workflows:
+  store-device-update:
+    jobs:
+      - build-and-test:
+          filters:
+            branches:
+              only: starbucks
+      - publish:
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only: starbucks
