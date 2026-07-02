@@ -9,6 +9,7 @@ version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@5.4.0
+  slack: circleci/slack@5.1.1
 
 parameters:
   skip-notarization:
@@ -77,6 +78,9 @@ jobs:
       - run:
           name: "RELEASE GATE — block publish unless notarized"
           command: bash scripts/verify_notarization.sh
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
       - persist_to_workspace:
           root: .
           paths:
