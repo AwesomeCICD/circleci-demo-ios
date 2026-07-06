@@ -89,9 +89,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:dsEgjXw4QYHFwc9yaHjXqLT38fVvFU5UlAEhxlxGJL0"
       - run:
           name: "Tag the release back to GitHub"
           command: bash scripts/tag_release.sh
