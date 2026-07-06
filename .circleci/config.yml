@@ -77,6 +77,9 @@ jobs:
       - run:
           name: "RELEASE GATE — block publish unless notarized"
           command: bash scripts/verify_notarization.sh
+      - run:
+          name: "Drop macOS filesystem metadata from the release folder"
+          command: find dist -name '._*' -delete
       - persist_to_workspace:
           root: .
           paths:
