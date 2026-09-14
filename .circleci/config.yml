@@ -110,8 +110,94 @@ jobs:
       - store_artifacts:
           path: dist
 
+  debug-retry-seed:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - run:
+          name: Record original workflow ID
+          command: |
+            mkdir -p /tmp/retry-proof
+            printf '%s\n' "$CIRCLE_WORKFLOW_ID" > /tmp/retry-proof/original-workflow-id
+      - persist_to_workspace:
+          root: /tmp/retry-proof
+          paths:
+            - original-workflow-id
+
+  debug-retry-proof:
+    executor: macos-m4
+    steps:
+      - attach_workspace:
+          at: /tmp/retry-proof
+      - run:
+          name: Prove Electron debug output and workflow rerun
+          environment:
+            DEBUG: "electron-osx-sign*"
+          command: |
+            set -euo pipefail
+
+            TEST_ROOT=$(mktemp -d)
+            cd "$TEST_ROOT"
+            npm init -y >/dev/null
+            npm install --no-save @electron/osx-sign@1.3.3 >/dev/null
+
+            APP="$TEST_ROOT/DebugProof.app"
+            mkdir -p "$APP/Contents/MacOS"
+            cat > "$APP/Contents/Info.plist" \<<'PLIST'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>CFBundleExecutable</key>
+              <string>DebugProof</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.circleci.debug-proof</string>
+              <key>CFBundleName</key>
+              <string>DebugProof</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+            </dict>
+            </plist>
+            PLIST
+            cat > "$TEST_ROOT/main.c" \<<'C'
+            int main(void) {
+              return 0;
+            }
+            C
+            clang "$TEST_ROOT/main.c" -o "$APP/Contents/MacOS/DebugProof"
+            export TEST_APP="$APP"
+
+            node \<<'NODE' 2>&1 | tee signer.log
+            const { signAsync } = require('@electron/osx-sign');
+
+            signAsync({
+              app: process.env.TEST_APP,
+              identity: '-',
+              identityValidation: false,
+            }).catch((error) => {
+              console.error(error);
+              process.exit(1);
+            });
+            NODE
+
+            grep -q 'electron-osx-sign' signer.log
+            codesign --verify --strict --verbose=2 "$APP"
+
+            ORIGINAL_WORKFLOW_ID=$(cat /tmp/retry-proof/original-workflow-id)
+            if [ "$CIRCLE_WORKFLOW_ID" = "$ORIGINAL_WORKFLOW_ID" ]; then
+              echo "Initial workflow attempt verified. Failing once to test automatic rerun."
+              exit 42
+            fi
+
+            echo "Automatic workflow rerun verified."
+
 workflows:
   store-device-update:
+    max_auto_reruns: 1
     jobs:
       - build-and-test:
           filters:
@@ -123,6 +209,16 @@ workflows:
           filters:
             branches:
               only: starbucks
+      - debug-retry-seed:
+          filters:
+            branches:
+              only: test/electron-debug-auto-rerun-starbucks
+      - debug-retry-proof:
+          requires:
+            - debug-retry-seed
+          filters:
+            branches:
+              only: test/electron-debug-auto-rerun-starbucks
       - publish:
           requires:
             - release-gate
