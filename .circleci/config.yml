@@ -178,6 +178,9 @@ jobs:
               app: process.env.TEST_APP,
               identity: '-',
               identityValidation: false,
+              platform: 'darwin',
+              preAutoEntitlements: false,
+              preEmbedProvisioningProfile: false,
             }).catch((error) => {
               console.error(error);
               process.exit(1);
