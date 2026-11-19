@@ -726,13 +726,19 @@ workflows:
       - security-scans:
           requires:
             - build-native-shell
+      # Stage 3: ship. Only bcp-demo uploads to TestFlight or submits to the
+      # App Store; any other branch (feature branches, agent PRs) stops after
+      # the security scans. no-testflight: true skips shipping on bcp-demo too.
       - deploy-testflight:
           requires:
             - security-scans
+          filters: &ship-filter pipeline.git.branch == "bcp-demo" and not pipeline.parameters.no-testflight
       - approve-release:
           type: approval
           requires:
             - deploy-testflight
+          filters: *ship-filter
       - submit-app-store:
           requires:
             - approve-release
+          filters: *ship-filter
